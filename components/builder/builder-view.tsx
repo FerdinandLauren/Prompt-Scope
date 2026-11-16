@@ -237,7 +237,7 @@ export function BuilderView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
+    <div className="mx-auto w-full max-w-[1240px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-10">
       <WorkspaceHeader
         title="Prompt Builder"
         description="Define the direction first. Configuration is local until you generate; the prompt remains editable after it is built."
@@ -255,8 +255,8 @@ export function BuilderView() {
         }
       />
 
-      <div className="grid gap-10 py-9 lg:grid-cols-12 lg:gap-12">
-        <div className="min-w-0 lg:col-span-6">
+      <div className="flex flex-col gap-14 py-9 sm:pt-10">
+        <div className="min-w-0">
           <section>
             <SectionLabel index="01" label="Category" detail="Initial scope" />
             <fieldset>
@@ -549,16 +549,11 @@ export function BuilderView() {
           </div>
         </div>
 
-        <aside className="min-w-0 lg:col-span-6">
-          <div ref={previewRef} className="scroll-mt-6 lg:sticky lg:top-6">
+        <div className="min-w-0">
+          <section>
+            <SectionLabel index="05" label="Direction profile" detail={selectedPreset ? "Preset" : "Custom"} />
             <div className="rounded-[8px] border border-line bg-bg-raised">
-              <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
-                <span className="mono-label">Direction profile</span>
-                <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-3">
-                  {selectedPreset ? "Preset" : "Custom"}
-                </span>
-              </div>
-              <div className="flex justify-center py-4">
+              <div className="flex justify-center py-6 sm:py-7">
                 <DirectionProfile sliders={configuration.sliders} size={210} />
               </div>
               <div className="grid grid-cols-2 border-t border-line-soft sm:grid-cols-4">
@@ -577,180 +572,184 @@ export function BuilderView() {
                 ))}
               </div>
             </div>
+          </section>
 
-            <div className="mt-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[12px] font-medium text-ink">Prompt output</h2>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    tone={
-                      !generated ? "neutral" : generated.source === "live" ? "live" : "demo"
-                    }
-                  >
-                    {!generated
-                      ? "Not generated"
-                      : generated.source === "live"
-                        ? "Model output"
-                        : generated.source === "demo"
-                          ? "Demo data"
-                          : "Local draft"}
-                  </Badge>
-                  <span className="font-mono text-[9px] text-ink-3">{category.shortLabel}</span>
+          <div ref={previewRef} className="mt-12 scroll-mt-6">
+            <SectionLabel
+              index="06"
+              label="Prompt output"
+              detail={`${category.shortLabel}${generated ? ` · ${generated.sections.length} sections` : ""}`}
+            />
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="mono-label">Generated prompt</span>
+              <div className="flex items-center gap-2">
+                <Badge
+                  tone={
+                    !generated ? "neutral" : generated.source === "live" ? "live" : "demo"
+                  }
+                >
+                  {!generated
+                    ? "Not generated"
+                    : generated.source === "live"
+                      ? "Model output"
+                      : generated.source === "demo"
+                        ? "Demo data"
+                        : "Local draft"}
+                </Badge>
+              </div>
+            </div>
+
+            {!generated ? (
+              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-dashed border-line px-6 py-10 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-bg">
+                  <ScanSearch size={20} strokeWidth={1.4} className="text-ink-3" aria-hidden="true" />
+                </div>
+                <h3 className="mt-5 font-display text-[21px] font-medium tracking-[-0.02em]">
+                  Your prompt will take shape here.
+                </h3>
+                <p className="mt-2 max-w-[38ch] text-[12px] leading-[1.6] text-ink-3">
+                  Complete the objective, then generate. The draft includes objective, audience, direction,
+                  composition, typography, constraints, output requirements, and calibration.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                  {["Editable", "Copyable", "Ready to analyze"].map((item) => (
+                    <span key={item} className="flex items-center gap-1.5">
+                      <Check size={10} className="text-green" aria-hidden="true" />
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
-
-              {!generated ? (
-                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-dashed border-line px-6 py-10 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-bg">
-                    <ScanSearch size={20} strokeWidth={1.4} className="text-ink-3" aria-hidden="true" />
-                  </div>
-                  <h3 className="mt-5 font-display text-[21px] font-medium tracking-[-0.02em]">
-                    Your prompt will take shape here.
-                  </h3>
-                  <p className="mt-2 max-w-[38ch] text-[12px] leading-[1.6] text-ink-3">
-                    Complete the objective, then generate. The draft includes objective, audience, direction,
-                    composition, typography, constraints, output requirements, and calibration.
-                  </p>
-                  <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                    {["Editable", "Copyable", "Ready to analyze"].map((item) => (
-                      <span key={item} className="flex items-center gap-1.5">
-                        <Check size={10} className="text-green" aria-hidden="true" />
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="enter-rise space-y-3">
-                  <div>
-                    <label htmlFor="prompt-title" className="sr-only">
-                      Prompt title
-                    </label>
-                    <input
-                      id="prompt-title"
-                      value={title}
-                      onChange={(event) => setTitle(event.target.value)}
-                      maxLength={160}
-                      className="w-full border-0 border-b border-line-soft bg-transparent pb-2 font-display text-[21px] font-medium tracking-[-0.02em] text-ink focus:border-orange focus:outline-none"
-                      placeholder="Prompt title"
-                    />
-                  </div>
-
-                  {generated.source === "draft" ? (
-                    <Notice tone="demo" title="Local draft — not an AI response">
-                      This preview is assembled from your configuration. Provider generation replaces it when a Gemini
-                      key is configured.
-                    </Notice>
-                  ) : generated.source === "demo" ? (
-                    <Notice tone="demo" title="DEMO DATA — composed locally">
-                      Demo Mode built this prompt from the same structure a live model uses. No request was sent to a
-                      provider. Add <span className="font-mono">GEMINI_API_KEY</span> to generate a tailored prompt.
-                    </Notice>
-                  ) : (
-                    <Notice tone="success" title="Generated by the configured model">
-                      Review the requirements before use. Edit any part; the prompt is yours to change.
-                    </Notice>
-                  )}
-
-                  <PromptEditor
-                    id="builder-prompt"
-                    label="Editable prompt"
-                    value={promptText}
-                    onChange={setPromptText}
-                    minHeight={340}
-                    hint="Edit freely. The original draft remains in this workspace until you reset."
+            ) : (
+              <div className="enter-rise space-y-3">
+                <div>
+                  <label htmlFor="prompt-title" className="sr-only">
+                    Prompt title
+                  </label>
+                  <input
+                    id="prompt-title"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    maxLength={160}
+                    className="w-full border-0 border-b border-line-soft bg-transparent pb-2 font-display text-[21px] font-medium tracking-[-0.02em] text-ink focus:border-orange focus:outline-none"
+                    placeholder="Prompt title"
                   />
-
-                  {generated.assumptions.length > 0 || generated.recommendations.length > 0 ? (
-                    <div className="rounded-[7px] border border-line bg-bg-raised px-3.5 py-2">
-                      {generated.assumptions.length > 0 ? (
-                        <Disclosure title="Assumptions" description={`${generated.assumptions.length}`}>
-                          <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
-                            {generated.assumptions.map((item) => (
-                              <li key={item} className="flex gap-2">
-                                <span className="text-ink-3">—</span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </Disclosure>
-                      ) : null}
-                      {generated.recommendations.length > 0 ? (
-                        <Disclosure title="Recommended considerations" description={`${generated.recommendations.length}`}>
-                          <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
-                            {generated.recommendations.map((item) => (
-                              <li key={item} className="flex gap-2">
-                                <span className="text-ink-3">—</span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </Disclosure>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={openAnalyzer} className={buttonClass({ variant: "primary", size: "md" })}>
-                      <ScanSearch size={14} strokeWidth={1.8} aria-hidden="true" />
-                      Analyze prompt
-                    </button>
-                    {savedSessionId ? (
-                      <Link href="/history" className={buttonClass({ variant: "secondary", size: "md" })}>
-                        Saved — open history
-                      </Link>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSaveDialogOpen(true)}
-                        className={buttonClass({ variant: "secondary", size: "md" })}
-                      >
-                        Save to history
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleGenerate}
-                      className={buttonClass({ variant: "ghost", size: "md" })}
-                    >
-                      Generate again
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setGenerated(null);
-                        setPromptText("");
-                        setTitle("");
-                        setSavedSessionId(null);
-                      }}
-                      className={buttonClass({ variant: "ghost", size: "md" })}
-                    >
-                      Clear output
-                    </button>
-                    <span className="ml-auto flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                      <span className="h-1 w-1 rounded-full bg-green" aria-hidden="true" />
-                      Editable
-                    </span>
-                  </div>
-
-                  <div className="border-t border-line-soft pt-3">
-                    <Disclosure title="Prompt structure" description={`${generated.sections.length} sections`}>
-                      <ol className="space-y-2">
-                        {generated.sections.map((section, index) => (
-                          <li key={section.heading} className="grid grid-cols-[20px_1fr] gap-2 text-[11.5px]">
-                            <span className="font-mono text-[9px] text-ink-3">0{index + 1}</span>
-                            <span>
-                              <span className="text-ink-2">{section.heading}</span>
-                              <span className="mt-0.5 block truncate text-[11px] text-ink-3">{section.content}</span>
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    </Disclosure>
-                  </div>
                 </div>
-              )}
-            </div>
+
+                {generated.source === "draft" ? (
+                  <Notice tone="demo" title="Local draft — not an AI response">
+                    This preview is assembled from your configuration. Provider generation replaces it when a Gemini
+                    key is configured.
+                  </Notice>
+                ) : generated.source === "demo" ? (
+                  <Notice tone="demo" title="DEMO DATA — composed locally">
+                    Demo Mode built this prompt from the same structure a live model uses. No request was sent to a
+                    provider. Add <span className="font-mono">GEMINI_API_KEY</span> to generate a tailored prompt.
+                  </Notice>
+                ) : (
+                  <Notice tone="success" title="Generated by the configured model">
+                    Review the requirements before use. Edit any part; the prompt is yours to change.
+                  </Notice>
+                )}
+
+                <PromptEditor
+                  id="builder-prompt"
+                  label="Editable prompt"
+                  value={promptText}
+                  onChange={setPromptText}
+                  minHeight={340}
+                  hint="Edit freely. The original draft remains in this workspace until you reset."
+                />
+
+                {generated.assumptions.length > 0 || generated.recommendations.length > 0 ? (
+                  <div className="rounded-[7px] border border-line bg-bg-raised px-3.5 py-2">
+                    {generated.assumptions.length > 0 ? (
+                      <Disclosure title="Assumptions" description={`${generated.assumptions.length}`}>
+                        <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
+                          {generated.assumptions.map((item) => (
+                            <li key={item} className="flex gap-2">
+                              <span className="text-ink-3">—</span>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </Disclosure>
+                    ) : null}
+                    {generated.recommendations.length > 0 ? (
+                      <Disclosure title="Recommended considerations" description={`${generated.recommendations.length}`}>
+                        <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
+                          {generated.recommendations.map((item) => (
+                            <li key={item} className="flex gap-2">
+                              <span className="text-ink-3">—</span>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </Disclosure>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={openAnalyzer} className={buttonClass({ variant: "primary", size: "md" })}>
+                    <ScanSearch size={14} strokeWidth={1.8} aria-hidden="true" />
+                    Analyze prompt
+                  </button>
+                  {savedSessionId ? (
+                    <Link href="/history" className={buttonClass({ variant: "secondary", size: "md" })}>
+                      Saved — open history
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSaveDialogOpen(true)}
+                      className={buttonClass({ variant: "secondary", size: "md" })}
+                    >
+                      Save to history
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className={buttonClass({ variant: "ghost", size: "md" })}
+                  >
+                    Generate again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGenerated(null);
+                      setPromptText("");
+                      setTitle("");
+                      setSavedSessionId(null);
+                    }}
+                    className={buttonClass({ variant: "ghost", size: "md" })}
+                  >
+                    Clear output
+                  </button>
+                  <span className="ml-auto flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                    <span className="h-1 w-1 rounded-full bg-green" aria-hidden="true" />
+                    Editable
+                  </span>
+                </div>
+
+                <div className="border-t border-line-soft pt-3">
+                  <Disclosure title="Prompt structure" description={`${generated.sections.length} sections`}>
+                    <ol className="space-y-2">
+                      {generated.sections.map((section, index) => (
+                        <li key={section.heading} className="grid grid-cols-[20px_1fr] gap-2 text-[11.5px]">
+                          <span className="font-mono text-[9px] text-ink-3">0{index + 1}</span>
+                          <span>
+                            <span className="text-ink-2">{section.heading}</span>
+                            <span className="mt-0.5 block truncate text-[11px] text-ink-3">{section.content}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </Disclosure>
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 flex items-start justify-between gap-5 border-t border-line-soft pt-3">
               <p className="max-w-[46ch] text-[10.5px] leading-[1.5] text-ink-3">
@@ -765,7 +764,7 @@ export function BuilderView() {
               </a>
             </div>
           </div>
-        </aside>
+        </div>
       </div>
 
       <SavePromptDialog

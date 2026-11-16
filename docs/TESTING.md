@@ -86,6 +86,11 @@ Theme QA (`scripts/qa-theme-density.mjs`) confirms the pre-paint script sets `da
 `color-scheme` before hydration, that switching themes repaints without a reload, that the choice
 survives a reload, and that the layout has no horizontal overflow in either theme at 1440 and 390 px.
 
+Single-column workspace QA for the builder and analyzer exercised the complete analyzer flow
+(analyze → improve → re-evaluate) and the builder generate flow at 1440, 900 and 390 px in both
+themes. Every pass reported zero horizontal overflow and zero console errors, and the evaluation
+card rendered below the prompt input rather than beside it.
+
 An axe-core scan (`scripts/qa-axe-a11y.mjs`) reports **0 violations** across all seven routes in both
 themes. It caught one real defect the token test could not see: an unlayered `a { color: inherit }`
 rule sat above Tailwind's utility layer, so primary links (dashboard, empty states) kept the near-white

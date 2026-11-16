@@ -46,7 +46,7 @@ Key UX:
 
 - Main desktop content max width increases from 1440 to 1560 where useful; gutters remain deliberate.
 - Workspace header and section rhythm gain vertical breathing room.
-- Builder and analyzer retain two-column desktop workflows but reduce repeated borders and nested surfaces.
+- Builder and analyzer use a single vertical desktop column: input and direction first, evaluation directly below it, improvement last. Horizontal splits inside results are limited to paired comparisons.
 - Mobile uses intentional stacking and a compact header/bottom navigation.
 - Light Mode uses warm paper-white ground, charcoal text, restrained borders, and the same orange/rose data semantics.
 - No new decorative animation; theme changes are short color transitions and respect reduced motion.

@@ -128,133 +128,150 @@ export function AnalyzerView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
+    <div className="mx-auto w-full max-w-[1240px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-10">
       <WorkspaceHeader
         title="Prompt Analyzer"
         description="Score a prompt across eight dimensions, with evidence for every weakness and no fabricated findings."
         meta={<Badge tone="neutral">Rubric {RUBRIC_VERSION}</Badge>}
       />
 
-      <div className="grid gap-10 py-9 lg:grid-cols-12 lg:gap-12">
-        <section className="min-w-0 lg:col-span-5">
-          <div className="lg:sticky lg:top-6">
-            {handoffVisible && pending ? (
-              <Notice
-                tone="info"
-                title="A prompt was handed over from the builder"
-                className="mb-4"
-                action={
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPrompt(pending.prompt);
-                      setTitle(pending.title === "Untitled prompt" ? "" : pending.title);
-                      setCategory(pending.category);
-                      setResult(null);
-                      setPhase("idle");
-                      setFieldError(undefined);
-                      setDismissedHandoff(pending.createdAt);
-                      setHandoffLinked(Boolean(pending.sessionId && pending.versionId));
-                      showToast(
-                        pending.sessionId
-                          ? "Saved version loaded. The next evaluation is recorded on that version."
-                          : "Builder prompt loaded into the analyzer.",
-                      );
-                    }}
-                    className={buttonClass({ variant: "secondary", size: "sm" })}
+      <div className="flex flex-col gap-10 py-9 sm:pt-10">
+        <section aria-labelledby="analyzer-input-heading">
+          {handoffVisible && pending ? (
+            <Notice
+              tone="info"
+              title="A prompt was handed over from the builder"
+              className="mb-4"
+              action={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrompt(pending.prompt);
+                    setTitle(pending.title === "Untitled prompt" ? "" : pending.title);
+                    setCategory(pending.category);
+                    setResult(null);
+                    setPhase("idle");
+                    setFieldError(undefined);
+                    setDismissedHandoff(pending.createdAt);
+                    setHandoffLinked(Boolean(pending.sessionId && pending.versionId));
+                    showToast(
+                      pending.sessionId
+                        ? "Saved version loaded. The next evaluation is recorded on that version."
+                        : "Builder prompt loaded into the analyzer.",
+                    );
+                  }}
+                  className={buttonClass({ variant: "secondary", size: "sm" })}
+                >
+                  Load prompt
+                </button>
+              }
+            >
+              {pending.prompt.length.toLocaleString("en-US")} characters ready to evaluate. Loading replaces the current
+              input.
+              {pending.sessionId ? " This handoff is linked to a saved version." : ""}
+            </Notice>
+          ) : null}
+
+          <div className="rounded-[10px] border border-line bg-bg-raised">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-3.5 sm:px-6">
+              <div className="flex min-w-0 items-baseline gap-2.5">
+                <h2 id="analyzer-input-heading" className="mono-label">
+                  Prompt input
+                </h2>
+                <span className="hidden font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3 sm:inline">
+                  Title, category and text
+                </span>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                {PROMPT_LIMITS.min}–{PROMPT_LIMITS.max.toLocaleString("en-US")} characters
+              </span>
+            </div>
+
+            <div className="px-5 py-5 sm:px-6 sm:py-6">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <LabeledInput
+                  label="Prompt title"
+                  hint="Optional label for the history entry."
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Churn dashboard brief"
+                  maxLength={160}
+                />
+                <div>
+                  <label
+                    htmlFor="analyzer-category"
+                    className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-ink-2"
                   >
-                    Load prompt
-                  </button>
-                }
-              >
-                {pending.prompt.length.toLocaleString()} characters ready to evaluate. Loading replaces the current
-                input.
-                {pending.sessionId ? " This handoff is linked to a saved version." : ""}
-              </Notice>
-            ) : null}
-            <div className="grid gap-5 sm:grid-cols-2">
-              <LabeledInput
-                label="Prompt title"
-                hint="Optional label for the history entry."
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Churn dashboard brief"
-                maxLength={160}
-              />
-              <div>
-                <label
-                  htmlFor="analyzer-category"
-                  className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-ink-2"
+                    Category
+                  </label>
+                  <Select
+                    id="analyzer-category"
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                  >
+                    {categories.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <PromptEditor
+                  id="analyzer-prompt"
+                  label="Prompt to evaluate"
+                  value={prompt}
+                  onChange={setPrompt}
+                  placeholder="Paste the prompt you want to diagnose…"
+                  maxLength={PROMPT_LIMITS.max}
+                  minHeight={320}
+                  error={fieldError}
+                  hint={`Minimum ${PROMPT_LIMITS.min} characters so the eight dimensions can be judged.`}
+                  footer={
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                      {prompt.length >= PROMPT_LIMITS.min ? "Ready" : `Need ${PROMPT_LIMITS.min - prompt.length} more`}
+                    </span>
+                  }
+                />
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line-soft pt-5">
+                <button
+                  type="button"
+                  onClick={handleAnalyze}
+                  disabled={phase === "analyzing" || prompt.trim().length < PROMPT_LIMITS.min}
+                  className={buttonClass({ variant: "primary", size: "lg", className: "min-w-[150px]" })}
+                  aria-busy={phase === "analyzing"}
                 >
-                  Category
-                </label>
-                <Select
-                  id="analyzer-category"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
+                  {phase === "analyzing" ? "Analyzing…" : "Analyze prompt"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className={buttonClass({ variant: "secondary", size: "lg" })}
                 >
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </Select>
+                  Clear input
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrompt(SAMPLE_PROMPTS[0].prompt);
+                    setTitle(SAMPLE_PROMPTS[0].title);
+                    setCategory(SAMPLE_PROMPTS[0].category);
+                    setResult(null);
+                    setPhase("idle");
+                  }}
+                  className={buttonClass({ variant: "ghost", size: "lg" })}
+                >
+                  Load sample
+                </button>
               </div>
             </div>
 
-            <div className="mt-4">
-              <PromptEditor
-                id="analyzer-prompt"
-                label="Prompt to evaluate"
-                value={prompt}
-                onChange={setPrompt}
-                placeholder="Paste the prompt you want to diagnose…"
-                maxLength={PROMPT_LIMITS.max}
-                minHeight={320}
-                error={fieldError}
-                hint={`Minimum ${PROMPT_LIMITS.min} characters so the eight dimensions can be judged.`}
-                footer={
-                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                    {prompt.length >= PROMPT_LIMITS.min ? "Ready" : `Need ${PROMPT_LIMITS.min - prompt.length} more`}
-                  </span>
-                }
-              />
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleAnalyze}
-                disabled={phase === "analyzing" || prompt.trim().length < PROMPT_LIMITS.min}
-                className={buttonClass({ variant: "primary", size: "lg", className: "min-w-[150px]" })}
-                aria-busy={phase === "analyzing"}
-              >
-                {phase === "analyzing" ? "Analyzing…" : "Analyze prompt"}
-              </button>
-              <button
-                type="button"
-                onClick={handleClear}
-                className={buttonClass({ variant: "secondary", size: "lg" })}
-              >
-                Clear input
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPrompt(SAMPLE_PROMPTS[0].prompt);
-                  setTitle(SAMPLE_PROMPTS[0].title);
-                  setCategory(SAMPLE_PROMPTS[0].category);
-                  setResult(null);
-                  setPhase("idle");
-                }}
-                className={buttonClass({ variant: "ghost", size: "lg" })}
-              >
-                Load sample
-              </button>
-            </div>
-
             {phase === "analyzing" ? (
-              <div className="mt-4 rounded-[7px] border border-line bg-bg-raised px-4 py-4">
+              <div className="border-t border-line-soft px-5 py-4 sm:px-6">
                 <LoadingLine label="Scoring eight dimensions" />
                 <p className="mt-2 text-[11px] leading-[1.5] text-ink-3">
                   The prompt is sent to the configured provider for evaluation. Nothing is saved until you choose to
@@ -264,43 +281,44 @@ export function AnalyzerView() {
             ) : null}
 
             {phase === "error" && error ? (
-              <Notice
-                tone="error"
-                title="Analysis failed"
-                className="mt-4"
-                action={
-                  <button
-                    type="button"
-                    onClick={handleAnalyze}
-                    className={buttonClass({ variant: "secondary", size: "sm" })}
-                  >
-                    Retry
-                  </button>
-                }
-              >
-                {error.message} Your prompt is preserved.
-              </Notice>
+              <div className="border-t border-line-soft px-5 py-4 sm:px-6">
+                <Notice
+                  tone="error"
+                  title="Analysis failed"
+                  action={
+                    <button
+                      type="button"
+                      onClick={handleAnalyze}
+                      className={buttonClass({ variant: "secondary", size: "sm" })}
+                    >
+                      Retry
+                    </button>
+                  }
+                >
+                  {error.message} Your prompt is preserved.
+                </Notice>
+              </div>
             ) : null}
 
-            <div className="mt-5 rounded-[7px] border border-line bg-bg-raised px-4 py-4">
-              <p className="text-[11px] leading-[1.6] text-ink-3">
+            <div className="border-t border-line-soft px-5 py-4 sm:px-6">
+              <p className="max-w-[96ch] text-[11px] leading-[1.6] text-ink-3">
                 Scores are a model-assisted diagnostic, not a universal measurement of prompt quality. Prompts are
                 transmitted to the configured AI provider in Live mode. Do not submit confidential business
                 information or sensitive personal data.
               </p>
             </div>
-
-            {stale ? (
-              <Notice tone="demo" title="The prompt changed since this evaluation" className="mt-4">
-                Results below belong to the previous text. Analyze again to evaluate the current version.
-              </Notice>
-            ) : null}
           </div>
+
+          {stale ? (
+            <Notice tone="demo" title="The prompt changed since this evaluation" className="mt-4">
+              Results below belong to the previous text. Analyze again to evaluate the current version.
+            </Notice>
+          ) : null}
         </section>
 
-        <section className="min-w-0 lg:col-span-7">
+        <section aria-label="Evaluation results">
           {result ? (
-            <div className="space-y-6">
+            <div className="flex flex-col gap-10">
               <EvaluationResults
                 snapshot={result}
                 title={title || undefined}
@@ -357,7 +375,7 @@ export function AnalyzerView() {
 
 function EmptyAnalysis() {
   return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[10px] border border-dashed border-line px-6 py-12 text-center">
+    <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[10px] border border-dashed border-line px-6 py-12 text-center">
       <div className="grid grid-cols-4 gap-1.5" aria-hidden="true">
         {Array.from({ length: 8 }).map((_, index) => (
           <span

@@ -57,7 +57,7 @@ Colour budget: under ~5% of a screen. Orange is reserved for the primary action 
 
 ## Layout
 
-- Desktop: 264px fixed sidebar; content column max 1560px with 56px gutters. Asymmetry where useful: a 6/6 builder, a 5/7 analyzer, a 4/8 comparison library and detail.
+- Desktop: 264px fixed sidebar. Builder and analyzer read as one vertical column capped at 1240px with 40px gutters; history and comparison views keep the wider 1560px shell. A 4/8 split is reserved for the comparison library and detail.
 - Tablet: 208px rail; gutters 32px; grids collapse to 1 column below 960px.
 - Mobile: compact top bar and bottom navigation, 20px gutters, 44px touch targets, single column. Charts resize rather than overflow.
 - Spacing rhythm: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96. More space above a heading than below it.

@@ -125,24 +125,28 @@ export function EvaluationResults({
           {snapshot.dimensionDetails.map((dimension) => (
             <li
               key={dimension.key}
-              className="grid grid-cols-[minmax(92px,128px)_1fr_40px] items-start gap-4 border-t border-line-soft px-6 py-4"
+              className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 border-t border-line-soft px-5 py-4 sm:grid-cols-[minmax(92px,128px)_1fr_40px] sm:items-start sm:gap-4 sm:px-6"
             >
-              <div>
+              <div className="min-w-0">
                 <div className="text-[12.5px] font-medium text-ink">{dimension.label}</div>
                 <div className="mt-1 font-mono text-[8.5px] uppercase tracking-[0.1em] text-ink-3">
                   {getScoreBand(dimension.score).label}
                 </div>
               </div>
-              <div className="min-w-0">
+              <div className="col-span-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
                 <div className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--track)]">
                   <div
                     className="h-full rounded-full transition-[width] duration-500 ease-out"
                     style={{ width: `${dimension.score}%`, background: scoreColor(dimension.score) }}
                   />
                 </div>
-                <p className="mt-2.5 text-[12px] leading-[1.65] text-ink-2">{dimension.explanation}</p>
+                <p className="mt-2.5 max-w-[88ch] text-[12px] leading-[1.65] text-ink-2">
+                  {dimension.explanation}
+                </p>
               </div>
-              <div className="text-right font-mono text-[15px] tabular text-ink">{dimension.score}</div>
+              <div className="text-right font-mono text-[15px] tabular text-ink sm:col-start-3 sm:row-start-1">
+                {dimension.score}
+              </div>
             </li>
           ))}
         </ul>

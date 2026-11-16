@@ -226,32 +226,28 @@ export function ImprovementWorkflow({
 
         {improvement && stage !== "idle" && stage !== "improving" ? (
           <div className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="min-w-0">
-                <PromptEditor
-                  id="original-prompt-readonly"
-                  label="Original prompt"
-                  value={originalPrompt}
-                  readOnly
-                  minHeight={220}
-                  labelRight={<Badge tone="negative">Original</Badge>}
-                  hint="Preserved exactly as evaluated. It is never overwritten."
-                />
-              </div>
-              <div className="min-w-0">
-                <PromptEditor
-                  id="improved-prompt"
-                  label="Improved prompt"
-                  value={improvedPrompt}
-                  onChange={(value) => {
-                    setImprovedPrompt(value);
-                    if (stage === "compared") setStage("revised");
-                  }}
-                  minHeight={220}
-                  labelRight={<Badge tone="positive">Revised</Badge>}
-                  hint="Edit freely. Any change requires re-evaluating before comparison."
-                />
-              </div>
+            <div className="flex flex-col gap-5">
+              <PromptEditor
+                id="original-prompt-readonly"
+                label="Original prompt"
+                value={originalPrompt}
+                readOnly
+                minHeight={220}
+                labelRight={<Badge tone="negative">Original</Badge>}
+                hint="Preserved exactly as evaluated. It is never overwritten."
+              />
+              <PromptEditor
+                id="improved-prompt"
+                label="Improved prompt"
+                value={improvedPrompt}
+                onChange={(value) => {
+                  setImprovedPrompt(value);
+                  if (stage === "compared") setStage("revised");
+                }}
+                minHeight={220}
+                labelRight={<Badge tone="positive">Revised</Badge>}
+                hint="Edit freely. Any change requires re-evaluating before comparison."
+              />
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
