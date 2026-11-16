@@ -13,7 +13,12 @@ import { postJson } from "@/lib/api/client";
 import { isUsableApiKey } from "@/lib/security/browser-api-key";
 import { cn } from "@/lib/utils";
 
-type VerifyResponse = { model: string; source: "environment" | "browser" | "none"; slow?: boolean };
+type VerifyResponse = {
+  model: string;
+  source: "environment" | "browser" | "none";
+  slow?: boolean;
+  busy?: boolean;
+};
 
 /** Provider-side problems that say nothing about whether the key is valid. */
 const KEEP_KEY_ERROR_CODES = new Set([
@@ -37,6 +42,7 @@ export function BrowserKeyPanel() {
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState<string | null>(null);
   const [verifiedSlow, setVerifiedSlow] = useState(false);
+  const [verifiedBusy, setVerifiedBusy] = useState(false);
 
   const described = describeKeySource(status);
   const draftLooksUsable = isUsableApiKey(draft.trim());
@@ -52,6 +58,7 @@ export function BrowserKeyPanel() {
     setVerifying(true);
     setVerified(null);
     setVerifiedSlow(false);
+    setVerifiedBusy(false);
 
     // The key is only sent to this application's own verify route, and it is
     // saved only after the provider confirms that it works.
@@ -87,6 +94,7 @@ export function BrowserKeyPanel() {
 
     setVerified(`Connected with ${result.data.model}.`);
     setVerifiedSlow(Boolean(result.data.slow));
+    setVerifiedBusy(Boolean(result.data.busy));
     setDraft("");
     showToast(
       remember ? "Key verified and remembered on this device." : "Key verified for this browser session.",
@@ -99,6 +107,7 @@ export function BrowserKeyPanel() {
     setVerifying(true);
     setVerified(null);
     setVerifiedSlow(false);
+    setVerifiedBusy(false);
 
     const result = await postJson<VerifyResponse>("/api/ai/verify", {});
     setVerifying(false);
@@ -109,6 +118,7 @@ export function BrowserKeyPanel() {
     }
     setVerified(`Connected with ${result.data.model}.`);
     setVerifiedSlow(Boolean(result.data.slow));
+    setVerifiedBusy(Boolean(result.data.busy));
   }
 
   return (
@@ -243,15 +253,23 @@ export function BrowserKeyPanel() {
 
         {verified ? (
           <Notice
-            tone={verifiedSlow ? "demo" : "success"}
-            title={verifiedSlow ? "Key verified, slow test" : "Connection verified"}
+            tone={verifiedSlow || verifiedBusy ? "demo" : "success"}
+            title={
+              verifiedBusy
+                ? "Key verified, model busy"
+                : verifiedSlow
+                  ? "Key verified, slow test"
+                  : "Connection verified"
+            }
           >
             <span className="flex items-center gap-2">
               <Check size={12} aria-hidden="true" />
               {verified}
-              {verifiedSlow
-                ? " The key and model are valid, but the test answer was slow, so provider responses may take a while."
-                : null}
+              {verifiedBusy
+                ? " The key is valid, but this model is busy right now. Generation will use the fallback model."
+                : verifiedSlow
+                  ? " The key and model are valid, but the test answer was slow, so provider responses may take a while."
+                  : null}
             </span>
           </Notice>
         ) : null}

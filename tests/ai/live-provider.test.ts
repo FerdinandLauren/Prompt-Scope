@@ -9,6 +9,7 @@ import { defaultSliders } from "@/config/presets";
 
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_MODEL;
+const originalFallback = process.env.GEMINI_FALLBACK_MODEL;
 
 function validEvaluationPayload(score = 72, mutate?: (payload: Record<string, unknown>) => void) {
   const payload: Record<string, unknown> = {
@@ -75,6 +76,8 @@ describe("live AI mode", () => {
     __setProviderForTests(null);
     process.env.GEMINI_API_KEY = originalKey;
     process.env.GEMINI_MODEL = originalModel;
+    if (originalFallback === undefined) delete process.env.GEMINI_FALLBACK_MODEL;
+    else process.env.GEMINI_FALLBACK_MODEL = originalFallback;
     vi.restoreAllMocks();
   });
 
@@ -198,6 +201,36 @@ describe("live AI mode", () => {
     stubProvider(providerFailure(404, "models/gemini-9-not-real is not found"));
     const error = await analyzePrompt(ANALYZE_INPUT).catch((thrown: unknown) => thrown);
     expect((error as AiError).code).toBe("model_unavailable");
+  });
+
+  it("retries a busy model once with the configured fallback", async () => {
+    process.env.GEMINI_FALLBACK_MODEL = "gemini-4-hydrogen";
+    const calls = stubProvider((params) => {
+      const model = (params as { model: string }).model;
+      if (model === "gemini-3.8-flash") {
+        throw Object.assign(new Error("This model is currently experiencing high demand"), {
+          status: 503,
+        });
+      }
+      return responseWith(validEvaluationPayload());
+    });
+
+    const result = await analyzePrompt(ANALYZE_INPUT);
+
+    expect(result.model).toBe("gemini-4-hydrogen");
+    expect(calls.map((call) => (call as { model: string }).model)).toEqual([
+      "gemini-3.8-flash",
+      "gemini-4-hydrogen",
+    ]);
+  });
+
+  it("surfaces 503 when the fallback is disabled", async () => {
+    process.env.GEMINI_FALLBACK_MODEL = "none";
+    stubProvider(providerFailure(503, "This model is currently experiencing high demand"));
+
+    const error = await analyzePrompt(ANALYZE_INPUT).catch((thrown: unknown) => thrown);
+    expect((error as AiError).code).toBe("provider_overloaded");
+    expect((error as AiError).retryable).toBe(true);
   });
 
   it("generates prompts from the provider and marks the source as live", async () => {

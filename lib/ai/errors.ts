@@ -9,6 +9,7 @@ export type AiErrorCode =
   | "timeout"
   | "network"
   | "provider_error"
+  | "provider_overloaded"
   | "throttled";
 
 export class AiError extends Error {
@@ -53,6 +54,8 @@ function statusForCode(code: AiErrorCode): number {
       return 429;
     case "timeout":
       return 504;
+    case "provider_overloaded":
+      return 503;
     case "invalid_response":
       return 502;
     default:
@@ -76,6 +79,8 @@ export const userMessageForCode: Record<AiErrorCode, string> = {
     "The provider did not respond in time. Check the connection and try again; a proxy or firewall can slow the first request.",
   network: "The provider could not be reached. Check the connection and retry.",
   provider_error: "The provider returned an error. Your input is preserved; try again.",
+  provider_overloaded:
+    "Gemini is receiving too many requests for this model right now. Wait a moment and try again, or set GEMINI_MODEL to a quieter model such as gemini-3.5-flash-lite.",
   throttled: "Too many requests from this session. Wait a moment before sending another.",
 };
 
@@ -113,6 +118,9 @@ export function normalizeProviderError(error: unknown, secrets: Array<string | u
   }
   if (status === 404) {
     return new AiError("model_unavailable", message, { ...base, retryable: false });
+  }
+  if (status === 503) {
+    return new AiError("provider_overloaded", message, { ...base, retryable: true });
   }
   if (status >= 500) {
     // Provider-side failures are usually transient, so they may be retried once.

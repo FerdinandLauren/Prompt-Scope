@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { __setProviderForTests } from "@/lib/ai/client";
 import { verifyConnection } from "@/lib/ai/verify";
 import { AiError } from "@/lib/ai/errors";
@@ -41,8 +41,11 @@ afterEach(() => {
 });
 
 describe("verifyConnection", () => {
-  it("confirms the key and model, then proves a tiny generation works", async () => {
+  beforeEach(() => {
     process.env.GEMINI_MODEL = "gemini-3.8-flash";
+  });
+
+  it("confirms the key and model, then proves a tiny generation works", async () => {
     const { probeCalls, generateCalls } = stubProvider();
 
     const result = await verifyConnection(VALID_KEY);
@@ -98,6 +101,22 @@ describe("verifyConnection", () => {
       model: "gemini-3.8-flash",
       source: "browser",
       slow: true,
+    });
+  });
+
+  it("keeps the key when the test model is busy", async () => {
+    stubProvider({
+      generateContent: async () => {
+        throw Object.assign(new Error("This model is currently experiencing high demand"), {
+          status: 503,
+        });
+      },
+    });
+
+    await expect(verifyConnection(VALID_KEY)).resolves.toEqual({
+      model: "gemini-3.8-flash",
+      source: "browser",
+      busy: true,
     });
   });
 

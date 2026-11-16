@@ -5,7 +5,7 @@ Verified 16 November 2026. Every number below came from a command that was actua
 ## 1. Automated tests
 
 ```bash
-npm test        # vitest, 180 tests, 18 files
+npm test        # vitest, 184 tests, 18 files
 npm run typecheck
 npm run lint
 ```
@@ -17,8 +17,8 @@ npm run lint
 | Request validation | `tests/validation/schemas.test.ts` | 14 | Objective is required with a floor; slugs are constrained; slider values must be whole numbers in 0–100 with all eight keys present; list caps hold; a browser-supplied `overallScore` is dropped rather than trusted. |
 | Analyzer engine | `tests/ai/heuristic-analyzer.test.ts` | 13 | All eight dimensions return integers in range; overall score matches the shared formula; evaluation is deterministic; ordering holds (vague < average < structured); brevity is penalised; repeated signal words cannot reach a perfect score. |
 | Evidence honesty | `tests/ai/evidence.test.ts` | 4 | A well-specified prompt yields no fabricated weakness; quoted evidence is verbatim from the prompt; no evidence is attached when the prompt contains no vague wording; a "detected but thin" dimension never claims the signal is missing. |
-| Live provider | `tests/ai/live-provider.test.ts` | 13 | Live mode is detected without exposing the key; the request uses structured JSON with a schema and the rubric; the server computes the overall score even when the model returns its own; a malformed response triggers exactly one retry with corrective feedback; an empty response, a 429, a rejected key and a missing model each map to a distinct, non-leaking error. |
-| Provider errors | `tests/ai/errors.test.ts` | 9 | Mapping for 429 / quota / 401 / 403 / 400 / 404 / 5xx / timeout / network; retryability is derived correctly; user-facing messages never contain provider text. |
+| Live provider | `tests/ai/live-provider.test.ts` | 15 | Live mode is detected without exposing the key; the request uses structured JSON with a schema and the rubric; the server computes the overall score even when the model returns its own; a malformed response triggers exactly one retry with corrective feedback; an empty response, a 429, a rejected key and a missing model each map to a distinct, non-leaking error. |
+| Provider errors | `tests/ai/errors.test.ts` | 10 | Mapping for 429 / quota / 401 / 403 / 400 / 404 / 5xx / timeout / network; retryability is derived correctly; user-facing messages never contain provider text. |
 | Provider schemas | `tests/ai/schemas.test.ts` | 11 | Structural validation of AI output; duplicate or missing dimensions are rejected; unsupported JSON-Schema keywords are stripped before the request while enums and required fields survive. |
 | Rate limiting | `tests/ai/throttle.test.ts` | 7 | Requests are allowed up to the ceiling, then blocked with a retryable `throttled` error; buckets are per client; the window resets; a nonsense env value falls back to the safe default. |
 | Demo improver | `tests/ai/demo-improve.test.ts` | 11 | The original text is preserved verbatim; missing facts become confirmation questions, never inventions; the change list covers the dimensions it touched; the revision scores higher on clarity *and* still reports remaining weaknesses. |
@@ -26,12 +26,12 @@ npm run lint
 | Comparison storage | `tests/storage/comparison-storage.test.ts` | 8 | Newest-first ordering, id replacement, deletion, corrupted JSON tolerance, and a stable snapshot reference (so React's `useSyncExternalStore` cannot loop). |
 | Browser key contract | `tests/security/browser-api-key.test.ts` | 9 | Header name is single-sourced; blank, placeholder and oversized values are rejected; the mask never returns the full key. |
 | Request-scoped keys | `tests/ai/browser-key-provider.test.ts` | 10 | A browser key wins for its own request while the environment client stays cached; the status payload never contains either key; provider errors redact the key; a full analyze call passes it through. |
-| Connection verification | `tests/ai/verify-connection.test.ts` | 7 | The verify path reports model and source only, fails cleanly with no key, distinguishes a rejected key from an unavailable model, keeps the key when only the test generation is slow, and never echoes the key. |
+| Connection verification | `tests/ai/verify-connection.test.ts` | 8 | The verify path reports model and source only, fails cleanly with no key, distinguishes a rejected key from an unavailable model, keeps the key when only the test generation is slow, and never echoes the key. |
 | Key and theme preferences | `tests/ui/settings-preferences.test.ts` | 12 | Session storage is the default; the device copy appears only after opt-in; clear removes both; theme falls back to `system`, rejects invalid values, and the pre-paint script matches the storage key. |
 | Settings integration | `tests/ui/browser-key-settings.test.ts` | 6 | The key header is attached to `/api/ai/*` only, never third-party URLs; extra headers are preserved; source copy distinguishes server, browser and demo. |
 | Theme tokens | `tests/ui/theme-tokens.test.ts` | 16 | Both blocks define every semantic token; light is genuinely light; foreground/background pairs clear WCAG AA in both themes. |
 
-**Result:** 180 passed / 180. TypeScript: no errors. ESLint: no errors or warnings.
+**Result:** 184 passed / 184. TypeScript: no errors. ESLint: no errors or warnings.
 
 Two defects were found by these tests and fixed rather than worked around:
 

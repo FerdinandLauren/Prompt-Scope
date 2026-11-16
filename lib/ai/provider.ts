@@ -1,7 +1,7 @@
 import "server-only";
 import { ThinkingLevel } from "@google/genai";
 import { AiError, normalizeProviderError } from "@/lib/ai/errors";
-import { getModelId, getProvider } from "@/lib/ai/client";
+import { getFallbackModelId, getModelId, getProvider } from "@/lib/ai/client";
 import { toGeminiJsonSchema } from "@/lib/ai/schemas";
 import type { z } from "zod";
 
@@ -69,10 +69,14 @@ export async function callStructured<T>({
   validate,
 }: StructuredRequest<T>, browserApiKey?: string): Promise<StructuredResult<T>> {
   const ai = getProvider(browserApiKey);
-  const model = getModelId();
+  const primaryModel = getModelId();
   const responseJsonSchema = toGeminiJsonSchema(schema);
 
-  const attempt = async (prompt: string, isRetry: boolean): Promise<StructuredResult<T>> => {
+  const attempt = async (
+    model: string,
+    prompt: string,
+    isRetry: boolean,
+  ): Promise<StructuredResult<T>> => {
     const response = await withTimeout(
       ai.models.generateContent({
         model,
@@ -107,6 +111,7 @@ export async function callStructured<T>({
     if (!parsed.ok) {
       if (!isRetry) {
         return attempt(
+          model,
           `${prompt}
 
 Your previous response was not valid JSON. Return only the complete JSON object that matches the schema, with no commentary and no code fences.`,
@@ -131,6 +136,7 @@ Your previous response was not valid JSON. Return only the complete JSON object 
               .join("; ");
 
         return attempt(
+          model,
           `${prompt}
 
 Your previous response did not satisfy the required structure. Correct these problems and return the complete JSON object again:
@@ -149,10 +155,29 @@ ${issues}`,
     return { data: validation.data, model, text };
   };
 
+  const secrets = [browserApiKey, process.env.GEMINI_API_KEY];
+
   try {
-    return await attempt(userPrompt, false);
+    return await attempt(primaryModel, userPrompt, false);
   } catch (error) {
-    throw normalizeProviderError(error, [browserApiKey, process.env.GEMINI_API_KEY]);
+    const normalized = normalizeProviderError(error, secrets);
+    const fallbackModel = getFallbackModelId();
+
+    // A busy model is temporary and says nothing about the request. Try the
+    // configured fallback once instead of making the user resubmit.
+    if (
+      normalized.code === "provider_overloaded" &&
+      fallbackModel &&
+      fallbackModel !== primaryModel
+    ) {
+      try {
+        return await attempt(fallbackModel, userPrompt, false);
+      } catch (fallbackError) {
+        throw normalizeProviderError(fallbackError, secrets);
+      }
+    }
+
+    throw normalized;
   }
 }
 

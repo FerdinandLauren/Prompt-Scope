@@ -43,6 +43,12 @@ describe("normalizeProviderError", () => {
     expect(error.retryable).toBe(false);
   });
 
+  it("separates a busy model from other provider errors", () => {
+    const error = normalizeProviderError(providerError(503, "This model is experiencing high demand"));
+    expect(error.code).toBe("provider_overloaded");
+    expect(error.retryable).toBe(true);
+  });
+
   it("retries server errors and timeouts but not validation failures", () => {
     expect(normalizeProviderError(providerError(500, "internal")).retryable).toBe(true);
     expect(normalizeProviderError(new Error("request timed out")).code).toBe("timeout");

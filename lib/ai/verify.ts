@@ -25,6 +25,11 @@ export type VerifyResult = {
    * that the provider was slow.
    */
   slow?: boolean;
+  /**
+   * Set when the key and model were confirmed, but the model answered 503 for
+   * the test generation. The key is valid; the model is only busy.
+   */
+  busy?: boolean;
 };
 
 /**
@@ -74,10 +79,13 @@ export async function verifyConnection(browserApiKey?: string): Promise<VerifyRe
   } catch (error) {
     const normalized = normalizeProviderError(error, [browserApiKey, process.env.GEMINI_API_KEY]);
 
-    // The key and model are already proven. A slow test answer is not a key
-    // problem, so keep the key and report the latency instead of rejecting it.
+    // The key and model are already proven. A slow or busy test answer is not a
+    // key problem, so keep the key and report what happened instead.
     if (keyAndModelConfirmed && normalized.code === "timeout") {
       return { model, source, slow: true };
+    }
+    if (keyAndModelConfirmed && normalized.code === "provider_overloaded") {
+      return { model, source, busy: true };
     }
 
     throw normalized;

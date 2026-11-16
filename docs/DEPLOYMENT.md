@@ -29,7 +29,8 @@ All four must pass. The build output should list the four `ƒ` API routes and th
    | Name | Value | Required |
    |---|---|---|
    | `GEMINI_API_KEY` | key from Google AI Studio | for Live AI Mode |
-   | `GEMINI_MODEL` | e.g. `gemini-3.8-flash` | optional, has a default |
+   | `GEMINI_MODEL` | e.g. `gemini-3.6-flash` | optional, has a default |
+   | `GEMINI_FALLBACK_MODEL` | e.g. `gemini-4-hydrogen` | optional, has a default |
    | `AI_RATE_LIMIT_MAX` | requests per window per IP | optional, default `12` |
    | `AI_RATE_LIMIT_WINDOW_MS` | window length in ms | optional, default `60000` |
 
@@ -56,7 +57,8 @@ keys on `x-forwarded-for` / `x-real-ip`.
 | Variable | Purpose | Default |
 |---|---|---|
 | `GEMINI_API_KEY` | Enables Live AI Mode. Empty, missing or a placeholder string leaves the app in Demo Mode. | unset |
-| `GEMINI_MODEL` | Gemini model id used for all three operations. Must support structured JSON output. | `gemini-3.8-flash` |
+| `GEMINI_MODEL` | Gemini model id used for all three operations. Must support structured JSON output. | `gemini-3.6-flash` |
+| `GEMINI_FALLBACK_MODEL` | Used once when the primary model answers 503 (high demand). Set to `none` to disable. | `gemini-4-hydrogen` |
 | `AI_RATE_LIMIT_MAX` | Per-client request ceiling inside the window. | `12` |
 | `AI_RATE_LIMIT_WINDOW_MS` | Window length in milliseconds. | `60000` |
 

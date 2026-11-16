@@ -96,14 +96,15 @@ prompts, the analyzer, the improver, the radar comparison and history.
 | `npm run start` | Serve the production build |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite (180 tests) |
+| `npm test` | Vitest suite (184 tests) |
 | `npm run check` | Typecheck + lint + tests |
 
 ### Environment variables
 
 ```env
 GEMINI_API_KEY=        # from https://aistudio.google.com/apikey — leave empty for Demo Mode
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.6-flash
+GEMINI_FALLBACK_MODEL=gemini-4-hydrogen
 AI_RATE_LIMIT_MAX=12
 AI_RATE_LIMIT_WINDOW_MS=60000
 ```
@@ -164,7 +165,7 @@ docs/                   architecture, deployment, testing report
 
 ## Quality
 
-- **180 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
+- **184 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
   honesty, the live provider path, request-scoped keys, connection verification, error mapping,
   schemas, throttling, storage, settings, theme tokens and the demo improver.
 - **Theme contrast is tested, not eyeballed:** both palettes must clear WCAG AA (7:1 for body text,

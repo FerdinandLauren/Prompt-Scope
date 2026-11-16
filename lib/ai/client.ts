@@ -6,7 +6,16 @@ import type { AiStatus } from "@/types/settings";
 
 export type { AiMode, AiStatus, KeySource } from "@/types/settings";
 
-export const DEFAULT_MODEL = "gemini-3.8-flash";
+export const DEFAULT_MODEL = "gemini-3.6-flash";
+export const DEFAULT_FALLBACK_MODEL = "gemini-4-hydrogen";
+
+/**
+ * The SDK retries 429/5xx responses five times with exponential backoff by
+ * default. That turns a short "model is busy" answer into a request that looks
+ * like a hang, so retries are disabled and the app reports the provider's real
+ * status instead.
+ */
+const PROVIDER_HTTP_OPTIONS = { retryOptions: { attempts: 1 } };
 
 export function getEnvironmentApiKey(): string | undefined {
   const key = process.env.GEMINI_API_KEY?.trim();
@@ -15,6 +24,16 @@ export function getEnvironmentApiKey(): string | undefined {
 
 export function getModelId(): string {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+}
+
+/**
+ * Used once when the primary model answers 503 (high demand). Set
+ * `GEMINI_FALLBACK_MODEL=none` to disable the fallback.
+ */
+export function getFallbackModelId(): string | undefined {
+  const configured = process.env.GEMINI_FALLBACK_MODEL?.trim();
+  if (configured === "none") return undefined;
+  return configured || DEFAULT_FALLBACK_MODEL;
 }
 
 /**
@@ -62,11 +81,11 @@ export function getProvider(browserApiKey?: string): GoogleGenAI {
   if (providerOverride) return providerOverride;
 
   if (source === "browser") {
-    return new GoogleGenAI({ apiKey: key });
+    return new GoogleGenAI({ apiKey: key, httpOptions: PROVIDER_HTTP_OPTIONS });
   }
 
   if (!environmentClient) {
-    environmentClient = new GoogleGenAI({ apiKey: key });
+    environmentClient = new GoogleGenAI({ apiKey: key, httpOptions: PROVIDER_HTTP_OPTIONS });
   }
   return environmentClient;
 }
