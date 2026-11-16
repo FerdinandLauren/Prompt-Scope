@@ -155,9 +155,9 @@ export function ImprovementWorkflow({
         <Badge tone="neutral">Original preserved</Badge>
       </div>
 
-      <div className="px-5 py-4">
+      <div className="px-6 py-5">
         {stage === "idle" || stage === "improving" ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <div className="mb-2 flex items-baseline justify-between gap-3">
                 <span className="text-[12px] font-medium text-ink-2">Improvement priorities</span>
@@ -225,8 +225,8 @@ export function ImprovementWorkflow({
         ) : null}
 
         {improvement && stage !== "idle" && stage !== "improving" ? (
-          <div className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-5">
+            <div className="grid gap-5 lg:grid-cols-2">
               <div className="min-w-0">
                 <PromptEditor
                   id="original-prompt-readonly"
@@ -254,7 +254,7 @@ export function ImprovementWorkflow({
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               <div className="rounded-[8px] border border-line bg-bg">
                 <div className="border-b border-line-soft px-4 py-2.5">
                   <h3 className="mono-label">Improvement summary</h3>
@@ -280,7 +280,7 @@ export function ImprovementWorkflow({
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {improvement.preservedRequirements.length > 0 ? (
                   <div className="rounded-[8px] border border-line bg-bg px-4 py-3">
                     <h3 className="mono-label">Preserved requirements</h3>
@@ -424,7 +424,7 @@ export function ComparisonPanel({
   const overallTone = comparison.overallChange > 0 ? "positive" : comparison.overallChange < 0 ? "negative" : "flat";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="mono-label">Before &amp; after</h2>
         <div className="flex items-center gap-2">
@@ -447,7 +447,7 @@ export function ComparisonPanel({
         </Notice>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         <div className="rounded-[8px] border border-line bg-bg px-4 py-4">
           <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[6px] border border-line bg-line">
             <ScoreCell label="Original" value={original.overallScore} band={getScoreBand(original.overallScore).label} />
@@ -523,7 +523,7 @@ export function ComparisonPanel({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2">
         <div className="rounded-[8px] border border-line bg-bg px-4 py-3">
           <h3 className="mono-label">Newly addressed</h3>
           {comparison.improved.length > 0 ? (

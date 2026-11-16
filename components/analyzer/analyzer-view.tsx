@@ -128,14 +128,14 @@ export function AnalyzerView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <WorkspaceHeader
         title="Prompt Analyzer"
         description="Score a prompt across eight dimensions, with evidence for every weakness and no fabricated findings."
         meta={<Badge tone="neutral">Rubric {RUBRIC_VERSION}</Badge>}
       />
 
-      <div className="grid gap-8 py-7 lg:grid-cols-12 lg:gap-10">
+      <div className="grid gap-10 py-9 lg:grid-cols-12 lg:gap-12">
         <section className="min-w-0 lg:col-span-5">
           <div className="lg:sticky lg:top-6">
             {handoffVisible && pending ? (
@@ -172,7 +172,7 @@ export function AnalyzerView() {
                 {pending.sessionId ? " This handoff is linked to a saved version." : ""}
               </Notice>
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2">
               <LabeledInput
                 label="Prompt title"
                 hint="Optional label for the history entry."
@@ -254,7 +254,7 @@ export function AnalyzerView() {
             </div>
 
             {phase === "analyzing" ? (
-              <div className="mt-4 rounded-[7px] border border-line bg-bg-raised px-4 py-3.5">
+              <div className="mt-4 rounded-[7px] border border-line bg-bg-raised px-4 py-4">
                 <LoadingLine label="Scoring eight dimensions" />
                 <p className="mt-2 text-[11px] leading-[1.5] text-ink-3">
                   The prompt is sent to the configured provider for evaluation. Nothing is saved until you choose to
@@ -282,7 +282,7 @@ export function AnalyzerView() {
               </Notice>
             ) : null}
 
-            <div className="mt-5 rounded-[7px] border border-line bg-bg-raised px-4 py-3.5">
+            <div className="mt-5 rounded-[7px] border border-line bg-bg-raised px-4 py-4">
               <p className="text-[11px] leading-[1.6] text-ink-3">
                 Scores are a model-assisted diagnostic, not a universal measurement of prompt quality. Prompts are
                 transmitted to the configured AI provider in Live mode. Do not submit confidential business
@@ -300,7 +300,7 @@ export function AnalyzerView() {
 
         <section className="min-w-0 lg:col-span-7">
           {result ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <EvaluationResults
                 snapshot={result}
                 title={title || undefined}
@@ -390,13 +390,13 @@ function EmptyAnalysis() {
 
 function AnalysisSkeleton() {
   return (
-    <div className="space-y-4" aria-hidden="true">
+    <div className="space-y-5" aria-hidden="true">
       <div className="rounded-[10px] border border-line bg-bg-raised p-5">
         <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--track)]" />
         <div className="mt-4 h-14 w-40 animate-pulse rounded-[6px] bg-[var(--track)]" />
         <div className="mt-4 h-2 w-full animate-pulse rounded-full bg-[var(--track)]" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-24 animate-pulse rounded-[8px] border border-line bg-bg-raised" />
         ))}

@@ -46,7 +46,7 @@ export function SettingsView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1120px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <WorkspaceHeader
         title="Settings"
         section="System"
@@ -56,7 +56,7 @@ export function SettingsView() {
 
       <section className="py-7">
         <h2 className="mono-label mb-3">Appearance</h2>
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-line bg-bg-raised px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-[10px] border border-line bg-bg-raised px-6 py-5">
           <div>
             <div className="text-[12.5px] font-medium text-ink">Color theme</div>
             <p className="mt-1 max-w-[64ch] text-[11.5px] leading-[1.6] text-ink-3">
@@ -76,13 +76,13 @@ export function SettingsView() {
         <h2 className="mono-label mb-3">Analysis mode</h2>
         <div className="rounded-[10px] border border-line bg-bg-raised">
           <div className="grid gap-px bg-line sm:grid-cols-4">
-            <div className="bg-bg-raised px-4 py-3.5">
+            <div className="bg-bg-raised px-4 py-4">
               <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Mode</div>
               <div className="mt-1.5 text-[13px] text-ink">
                 {loading ? "Checking…" : status.mode === "live" ? "Live AI mode" : "Demo mode"}
               </div>
             </div>
-            <div className="bg-bg-raised px-4 py-3.5">
+            <div className="bg-bg-raised px-4 py-4">
               <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Key source</div>
               <div className="mt-1.5 text-[12px] text-ink-2">
                 {status.source === "browser"
@@ -92,11 +92,11 @@ export function SettingsView() {
                     : "None"}
               </div>
             </div>
-            <div className="bg-bg-raised px-4 py-3.5">
+            <div className="bg-bg-raised px-4 py-4">
               <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Model</div>
               <div className="mt-1.5 font-mono text-[12px] text-ink-2">{status.model ?? "not configured"}</div>
             </div>
-            <div className="bg-bg-raised px-4 py-3.5">
+            <div className="bg-bg-raised px-4 py-4">
               <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Rubric</div>
               <div className="mt-1.5 font-mono text-[12px] text-ink-2">{RUBRIC_VERSION}</div>
             </div>
@@ -184,7 +184,7 @@ export function SettingsView() {
             "Do not submit confidential business information, personal data, or credentials in a prompt.",
             "Demo Mode does not transmit prompt text to any provider.",
             "Scores are model-assisted diagnostics, not a scientific measurement of prompt quality.",
-            "API keys live in server-side environment variables and are never logged or returned to the browser.",
+            "A key entered in Settings is sent only to this application's own server route, is never written to a log or database, and stays in this browser unless you clear it.",
           ].map((item) => (
             <li key={item} className="py-2.5 text-[12px] leading-[1.6] text-ink-2">
               {item}

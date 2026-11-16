@@ -56,7 +56,7 @@ const endpoints = [
 
 export default function DocsPage() {
   return (
-    <PageFrame className="max-w-[1100px]">
+    <PageFrame className="max-w-[1200px]">
       <PageHeader
         title="Documentation"
         section="System"

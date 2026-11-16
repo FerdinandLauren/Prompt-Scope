@@ -23,7 +23,7 @@ export function ComparisonView() {
   const selected = records.find((record) => record.id === selectedId) ?? records[0] ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <WorkspaceHeader
         title="Comparisons"
         description="Original and improved evaluations under the same rubric. Declines and unchanged dimensions are reported as measured."
@@ -53,7 +53,7 @@ export function ComparisonView() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-8 py-7 lg:grid-cols-12 lg:gap-10">
+        <div className="grid gap-10 py-9 lg:grid-cols-12 lg:gap-12">
           <aside className="min-w-0 lg:col-span-4">
             <div className="mb-3 flex items-center justify-between border-b border-line-soft pb-2.5">
               <h2 className="mono-label">Recorded comparisons</h2>
@@ -123,9 +123,9 @@ function ComparisonDetail({ record, onDelete }: { record: ComparisonRecord; onDe
   const comparison = compareSnapshots(record.original, record.improved);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="rounded-[10px] border border-line bg-bg-raised">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line-soft px-5 py-3.5">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line-soft px-6 py-5">
           <div className="min-w-0">
             <h2 className="font-display text-[19px] font-medium tracking-[-0.02em]">
               {truncate(record.title, 80)}
@@ -151,13 +151,13 @@ function ComparisonDetail({ record, onDelete }: { record: ComparisonRecord; onDe
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-[10px] border border-line bg-bg-raised">
           <div className="flex items-center justify-between border-b border-line-soft px-5 py-3">
             <h3 className="mono-label">Original prompt</h3>
             <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-rose">Preserved</span>
           </div>
-          <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap px-5 py-4 font-mono text-[11.5px] leading-[1.7] text-ink-2">
+          <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap px-6 py-5 font-mono text-[11.5px] leading-[1.7] text-ink-2">
             {record.originalPrompt}
           </pre>
         </div>
@@ -166,14 +166,14 @@ function ComparisonDetail({ record, onDelete }: { record: ComparisonRecord; onDe
             <h3 className="mono-label">Improved prompt</h3>
             <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-orange">Revised</span>
           </div>
-          <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap px-5 py-4 font-mono text-[11.5px] leading-[1.7] text-ink-2">
+          <pre className="max-h-[320px] overflow-auto whitespace-pre-wrap px-6 py-5 font-mono text-[11.5px] leading-[1.7] text-ink-2">
             {record.improvedPrompt}
           </pre>
         </div>
       </div>
 
       {record.improvement ? (
-        <div className="rounded-[10px] border border-line bg-bg-raised px-5 py-4">
+        <div className="rounded-[10px] border border-line bg-bg-raised px-6 py-5">
           <h3 className="mono-label">Recorded improvement summary</h3>
           <p className="mt-2 text-[12.5px] leading-[1.65] text-ink-2">{record.improvement.summary}</p>
           {record.improvement.remainingLimitations.length > 0 ? (

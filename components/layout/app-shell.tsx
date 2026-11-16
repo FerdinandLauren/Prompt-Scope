@@ -75,7 +75,7 @@ function NavItem({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group relative flex h-9 items-center gap-3 rounded-[6px] px-3 text-[13px] transition-colors duration-150",
+        "group relative flex h-10 items-center gap-3 rounded-[6px] px-3 text-[13px] transition-colors duration-150",
         active ? "bg-surface text-ink" : "text-ink-2 hover:bg-surface/60 hover:text-ink",
       )}
     >
@@ -105,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-bg">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-line bg-bg lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] border-r border-line bg-bg lg:flex lg:flex-col">
         <div className="flex h-[76px] items-center gap-3 border-b border-line-soft px-6">
           <ScopeMark size={30} className="text-ink-2" />
           <div>
@@ -118,11 +118,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col px-4 pb-6 pt-7" aria-label="Primary">
+        <nav className="flex flex-1 flex-col px-4 pb-6 pt-8" aria-label="Primary">
           <div className="mb-2 px-3">
             <span className="mono-label">Workspace</span>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {navigation.map((item) => (
               <NavItem key={item.href} {...item} active={isActive(pathname, item.href)} />
             ))}
@@ -131,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mt-8 mb-2 px-3">
             <span className="mono-label">System</span>
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {systemNavigation.map((item) => (
               <NavItem key={item.href} {...item} active={isActive(pathname, item.href)} />
             ))}
@@ -178,7 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main id="main-content" className="min-h-[calc(100dvh-3.5rem)] pb-24 lg:min-h-dvh lg:pl-[248px] lg:pb-0">
+      <main id="main-content" className="min-h-[calc(100dvh-3.5rem)] pb-28 lg:min-h-dvh lg:pl-[264px] lg:pb-0">
         <div key={pathname} className="enter-fade">
           {children}
         </div>

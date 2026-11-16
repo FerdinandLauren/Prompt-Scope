@@ -71,7 +71,7 @@ export function HistoryView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <WorkspaceHeader
         title="Prompt History"
         description="A local library of prompts, their versions, and the evaluation snapshot recorded for each version."
@@ -162,7 +162,7 @@ export function HistoryView() {
           </div>
 
           <div className="mt-2">
-            <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-line-soft px-2 py-2.5 sm:grid-cols-[minmax(0,1fr)_110px_120px_92px_76px]">
+            <div className="grid grid-cols-[1fr_auto] gap-5 border-b border-line-soft px-2 py-2.5 sm:grid-cols-[minmax(0,1fr)_110px_120px_92px_76px]">
               <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">Prompt</span>
               <span className="hidden font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3 sm:block">
                 Category
@@ -182,7 +182,7 @@ export function HistoryView() {
                   <button
                     type="button"
                     onClick={() => setOpenId(summary.id)}
-                    className="grid w-full grid-cols-[1fr_auto] items-center gap-4 border-b border-line-soft px-2 py-3.5 text-left transition-colors duration-150 hover:bg-surface/50 sm:grid-cols-[minmax(0,1fr)_110px_120px_92px_76px]"
+                    className="grid w-full grid-cols-[1fr_auto] items-center gap-5 border-b border-line-soft px-2 py-4 text-left transition-colors duration-150 hover:bg-surface/50 sm:grid-cols-[minmax(0,1fr)_110px_120px_92px_76px]"
                   >
                     <span className="min-w-0">
                       <span className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export function HistoryView() {
         />
       ) : null}
 
-      <div className="mt-8 flex items-start justify-between gap-4 border-t border-line-soft pt-4">
+      <div className="mt-8 flex items-start justify-between gap-5 border-t border-line-soft pt-4">
         <p className="max-w-[70ch] text-[11px] leading-[1.6] text-ink-3">
           Local storage is scoped to this browser and device. Clearing site data removes the library. Cloud sync is
           planned for a later version.

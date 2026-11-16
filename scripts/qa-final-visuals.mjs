@@ -30,7 +30,7 @@ const clickText = (needle) =>
     return true;
   }, needle);
 
-// Seed: one analyzed session with an improved version and a saved comparison.
+// Seed one analysed session, an improved version and a saved comparison.
 await page.goto(`${BASE}/history`, { waitUntil: "networkidle0" });
 await page.evaluate(() => window.localStorage.clear());
 await page.goto(`${BASE}/analyzer`, { waitUntil: "networkidle0" });
@@ -65,21 +65,62 @@ report.steps.push({
   })),
 });
 
-for (const [route, name] of [
-  ["/", "final-dashboard"],
-  ["/comparison", "final-comparison"],
-  ["/history", "final-history"],
-  ["/docs", "final-docs"],
-  ["/settings", "final-settings"],
-]) {
-  await page.goto(`${BASE}${route}`, { waitUntil: "networkidle0" });
-  await page.evaluate(() => document.fonts.ready);
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: true });
+for (const theme of ["dark", "light"]) {
+  await page.evaluate((value) => {
+    window.localStorage.setItem("promptscope.theme.v1", value);
+  }, theme);
+
+  for (const [route, name] of [
+    ["/", "final-dashboard"],
+    ["/comparison", "final-comparison"],
+    ["/history", "final-history"],
+    ["/docs", "final-docs"],
+    ["/settings", "final-settings"],
+  ]) {
+    await page.goto(`${BASE}${route}`, { waitUntil: "networkidle0" });
+    await page.evaluate(() => document.fonts.ready);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await page.screenshot({ path: path.join(OUT, `${name}-${theme}.png`), fullPage: true });
+    report.steps.push({
+      step: `${name}-${theme}`,
+      scrollWidth: await page.evaluate(() => document.documentElement.scrollWidth),
+      innerWidth: await page.evaluate(() => window.innerWidth),
+    });
+  }
+
+  // The builder needs a generated prompt to show its real density.
+  await page.goto(`${BASE}/builder`, { waitUntil: "networkidle0" });
+  await page.evaluate(() => {
+    const textarea = document.querySelector("#objective");
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+    setter.call(
+      textarea,
+      "Design a calm analytics dashboard for a subscription operations team that reviews churn weekly.",
+    );
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  await clickText("Generate prompt");
+  await page.waitForFunction(() => (document.querySelector("#builder-prompt")?.value ?? "").length > 200, {
+    timeout: 20_000,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await page.screenshot({ path: path.join(OUT, `final-builder-generated-${theme}.png`), fullPage: true });
   report.steps.push({
-    step: name,
+    step: `final-builder-generated-${theme}`,
     scrollWidth: await page.evaluate(() => document.documentElement.scrollWidth),
-    innerWidth: await page.evaluate(() => window.innerWidth),
+  });
+
+  // Analyzer with a real result, which is the densest surface.
+  await page.goto(`${BASE}/analyzer`, { waitUntil: "networkidle0" });
+  await clickText("Load sample");
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  await clickText("Analyze prompt");
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  await page.screenshot({ path: path.join(OUT, `final-analyzer-${theme}.png`), fullPage: true });
+  report.steps.push({
+    step: `final-analyzer-${theme}`,
+    scrollWidth: await page.evaluate(() => document.documentElement.scrollWidth),
   });
 }
 

@@ -46,7 +46,7 @@ import type { GeneratedPrompt, PromptConfiguration, SliderKey } from "@/types/pr
 
 function SectionLabel({ index, label, detail }: { index: string; label: string; detail?: string }) {
   return (
-    <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-line-soft pb-2.5">
+    <div className="mb-4 flex items-baseline justify-between gap-5 border-b border-line-soft pb-2.5">
       <h2 className="flex items-baseline gap-2.5 text-[12px] font-medium text-ink">
         <span className="font-mono text-[9px] tracking-[0.1em] text-ink-3">{index}</span>
         {label}
@@ -237,7 +237,7 @@ export function BuilderView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <WorkspaceHeader
         title="Prompt Builder"
         description="Define the direction first. Configuration is local until you generate; the prompt remains editable after it is built."
@@ -255,8 +255,8 @@ export function BuilderView() {
         }
       />
 
-      <div className="grid gap-8 py-7 lg:grid-cols-12 lg:gap-10">
-        <div className="min-w-0 lg:col-span-7">
+      <div className="grid gap-10 py-9 lg:grid-cols-12 lg:gap-12">
+        <div className="min-w-0 lg:col-span-6">
           <section>
             <SectionLabel index="01" label="Category" detail="Initial scope" />
             <fieldset>
@@ -298,7 +298,7 @@ export function BuilderView() {
             </fieldset>
           </section>
 
-          <section className="mt-7">
+          <section className="mt-10">
             <SectionLabel index="02" label="Objective" detail="Required" />
             <LabeledTextarea
               id="objective"
@@ -314,11 +314,11 @@ export function BuilderView() {
             />
           </section>
 
-          <section className="mt-7">
+          <section className="mt-10">
             <SectionLabel index="03" label="Context" detail="Optional" />
-            <div className="rounded-[7px] border border-line bg-bg-raised px-4">
+            <div className="rounded-[8px] border border-line-soft bg-bg-raised px-5">
               <Disclosure title="Audience and project background" description="Improves context accuracy">
-                <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                <div className="grid gap-5 pt-1 sm:grid-cols-2">
                   <LabeledInput
                     label="Target audience"
                     value={configuration.audience}
@@ -433,9 +433,9 @@ export function BuilderView() {
             </div>
           </section>
 
-          <section className="mt-7">
+          <section className="mt-10">
             <SectionLabel index="04" label="Focus parameters" detail="0—100 each" />
-            <div className="rounded-[7px] border border-line bg-bg-raised p-4">
+            <div className="rounded-[7px] border border-line bg-bg-raised p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-[12px] font-medium text-ink">Presets</div>
@@ -482,7 +482,7 @@ export function BuilderView() {
                 })}
               </div>
 
-              <div className="mt-3 grid gap-x-7 sm:grid-cols-2">
+              <div className="mt-2 grid gap-x-10 sm:grid-cols-2">
                 {sliderDefinitions.map((definition) => (
                   <Slider
                     key={definition.key}
@@ -498,7 +498,7 @@ export function BuilderView() {
             </div>
           </section>
 
-          <div className="mt-7 rounded-[7px] border border-line bg-bg-raised p-4">
+          <div className="mt-10 rounded-[7px] border border-line bg-bg-raised p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-[12px] font-medium text-ink">Ready to compose?</div>
@@ -549,7 +549,7 @@ export function BuilderView() {
           </div>
         </div>
 
-        <aside className="min-w-0 lg:col-span-5">
+        <aside className="min-w-0 lg:col-span-6">
           <div ref={previewRef} className="scroll-mt-6 lg:sticky lg:top-6">
             <div className="rounded-[8px] border border-line bg-bg-raised">
               <div className="flex items-center justify-between border-b border-line-soft px-4 py-3">
@@ -752,7 +752,7 @@ export function BuilderView() {
               )}
             </div>
 
-            <div className="mt-5 flex items-start justify-between gap-4 border-t border-line-soft pt-3">
+            <div className="mt-5 flex items-start justify-between gap-5 border-t border-line-soft pt-3">
               <p className="max-w-[46ch] text-[10.5px] leading-[1.5] text-ink-3">
                 Generated prompts are instructions, not executed code. Review the output before use.
               </p>

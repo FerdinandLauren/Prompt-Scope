@@ -110,7 +110,7 @@ export function DashboardView() {
       : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] px-5 pb-16 sm:px-8 lg:px-12">
+    <div className="mx-auto w-full max-w-[1560px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-14">
       <div className="flex items-center justify-between border-b border-line-soft py-5">
         <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
           <span>Workspace</span>
@@ -125,7 +125,7 @@ export function DashboardView() {
         </div>
       </div>
 
-      <section className="grid gap-10 border-b border-line-soft py-10 lg:grid-cols-12 lg:gap-14 lg:py-14">
+      <section className="grid gap-10 border-b border-line-soft py-12 lg:grid-cols-12 lg:gap-14 lg:py-14">
         <div className="flex flex-col justify-center lg:col-span-7">
           <p className="max-w-[32ch] font-mono text-[10px] uppercase leading-[1.6] tracking-[0.15em] text-orange">
             Prompt direction &amp; evaluation studio
@@ -176,14 +176,14 @@ export function DashboardView() {
                 ) : null}
               </div>
               <div className="grid grid-cols-2 border-t border-line-soft">
-                <div className="border-r border-line-soft px-5 py-3.5">
+                <div className="border-r border-line-soft px-6 py-5">
                   <div className="mono-label">Score</div>
                   <div className="mt-1 font-mono text-[24px] leading-none tracking-[-0.04em] text-ink">
                     {spotlight ? spotlight.score : "—"}
                     <span className="ml-1 text-[11px] text-ink-3">/100</span>
                   </div>
                 </div>
-                <div className="px-5 py-3.5">
+                <div className="px-6 py-5">
                   <div className="mono-label">Verdict</div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <span className="text-[11px] text-ink-2">{spotlight ? spotlight.label : "Not evaluated"}</span>
@@ -203,7 +203,7 @@ export function DashboardView() {
         </div>
       </section>
 
-      <section className="grid gap-10 border-b border-line-soft py-10 lg:grid-cols-12 lg:gap-14">
+      <section className="grid gap-10 border-b border-line-soft py-12 lg:grid-cols-12 lg:gap-14">
         <div className="lg:col-span-7">
           <div className="mb-4 flex items-end justify-between border-b border-line-soft pb-3">
             <h2 className="text-[13px] font-medium text-ink">Start here</h2>
@@ -216,7 +216,7 @@ export function DashboardView() {
                 <Link
                   key={action.href}
                   href={action.href}
-                  className="group grid grid-cols-[32px_1fr_auto] items-start gap-4 py-4 transition-colors duration-150 hover:bg-surface/50 sm:grid-cols-[36px_1fr_auto] sm:px-2"
+                  className="group grid grid-cols-[32px_1fr_auto] items-start gap-5 py-4 transition-colors duration-150 hover:bg-surface/50 sm:grid-cols-[36px_1fr_auto] sm:px-2"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-line bg-bg-raised text-ink-3 transition-colors duration-150 group-hover:border-[var(--line-strong)] group-hover:text-orange">
                     <Icon size={15} strokeWidth={1.7} aria-hidden="true" />
@@ -296,7 +296,7 @@ export function DashboardView() {
                     session.versions.find((version) => version.id === session.currentVersionId) ??
                     session.versions.at(-1);
                   return (
-                    <li key={session.id} className="flex items-center justify-between gap-4 py-3">
+                    <li key={session.id} className="flex items-center justify-between gap-5 py-3">
                       <span className="min-w-0">
                         <span className="block truncate text-[12.5px] text-ink">{session.title}</span>
                         <span className="mt-0.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
@@ -326,7 +326,7 @@ export function DashboardView() {
       </section>
 
       {latestComparison ? (
-        <section className="border-b border-line-soft py-10">
+        <section className="border-b border-line-soft py-12">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line-soft pb-3">
             <h2 className="text-[13px] font-medium text-ink">Quick comparison preview</h2>
             <Link href="/comparison" className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3 hover:text-ink">
