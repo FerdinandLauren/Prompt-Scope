@@ -59,11 +59,29 @@ const rules: Record<DimensionKey, Rule> = {
   visual_direction: {
     baseline: 24,
     signals: [
-      { pattern: /\b(minimal(ist)?|editorial|brutalist|corporate|futuristic|playful|warm|cold|organic|geometric|soft|sharp|refined|expressive)\b/gi, label: "named style direction", weight: 13 },
-      { pattern: /\b(colou?r|palette|tone|hue|monochrome|duotone|gradient|accent)\b/gi, label: "colour behaviour", weight: 12 },
-      { pattern: /\b(mood|atmosphere|tone|feeling|calm|energetic|serious|friendly|premium)\b/gi, label: "intended mood", weight: 10 },
-      { pattern: /\b(photo(graphy)?|imagery|illustration|icon(ography|s)?|texture|pattern|material|3d|render)\b/gi, label: "visual material", weight: 10 },
-      { pattern: /\b(inspired by|reference|similar to|style of|like \w+)\b/gi, label: "a reference point", weight: 10 },
+      {
+        pattern:
+          /\b(minimal(ist|ism)?|editorial|brutalist|corporate|futuristic|playful|warm|cool|cold|organic|geometric|soft|sharp|refined|restrained|quiet|bold|expressive|sleek|technical|retro|vintage|luxurious|premium|understated|high[- ]contrast|monochrome)\b/gi,
+        label: "named style direction",
+        weight: 14,
+      },
+      {
+        pattern:
+          /\b(colou?rs?|palette|tone|hue|saturation|accent|gradient|duotone|monochrome|neutrals?|charcoal|off[- ]white|cream|beige|black|white|grey|gray|orange|amber|yellow|pink|red|green|blue|purple|teal|warm|cool)\b/gi,
+        label: "colour behaviour",
+        weight: 13,
+      },
+      {
+        pattern: /\b(mood|atmosphere|feeling|calm|energetic|serious|friendly|clinical|inviting|nostalgic|confident)\b/gi,
+        label: "intended mood",
+        weight: 10,
+      },
+      {
+        pattern: /\b(photo(graphy)?|imagery|illustration|icon(ography|s)?|texture|pattern|material|3d|render|screenshot|no stock)\b/gi,
+        label: "visual material",
+        weight: 10,
+      },
+      { pattern: /\b(inspired by|reference|similar to|style of|in the manner of|like \w+)\b/gi, label: "a reference point", weight: 10 },
     ],
     missing: "no coherent visual direction is described",
     suggestion: "Describe the direction with two or three concrete anchors: style, colour behaviour, and mood.",
@@ -94,9 +112,10 @@ const rules: Record<DimensionKey, Rule> = {
     baseline: 20,
     signals: [
       { pattern: /\b(must|must not|should not|avoid|do not|don't|never|only|limit|no more than|at least)\b/gi, label: "explicit limits", weight: 13 },
-      { pattern: /\b(responsive|mobile[- ]first|touch|keyboard|screen reader|wcag|accessible|accessibility|contrast ratio)\b/gi, label: "accessibility and responsiveness", weight: 12 },
+      { pattern: /\b(responsive|mobile[- ]first|touch|wcag|accessible|accessibility|contrast ratio|contrast|legible)\b/gi, label: "accessibility and responsiveness", weight: 12 },
+      { pattern: /\b(keyboard|focus ring|focusable|screen reader|aria|semantic|reduced motion)\b/gi, label: "interaction accessibility", weight: 10 },
       { pattern: /\b(performance|load time|bundle|lightweight|fast|budget)\b/gi, label: "performance limits", weight: 9 },
-      { pattern: /\b(without|exclude|excluded|no stock|no lorem|placeholder-free|plain|no animation)\b/gi, label: "exclusions", weight: 9 },
+      { pattern: /\b(without|exclude|excluded|no stock|no lorem|no carousel|no animation|placeholder-free|plain)\b/gi, label: "exclusions", weight: 9 },
     ],
     missing: "no limits, exclusions, or required conditions are stated",
     suggestion: "Add explicit must/avoid statements covering responsiveness, accessibility, and exclusions.",
@@ -125,15 +144,25 @@ const conflictPairs: Array<{ a: RegExp; b: RegExp; message: string }> = [
 ];
 
 const missingChecks: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /\b(audience|users?|customers?|team|persona)\b/i, label: "Target audience" },
-  { pattern: /\b(purpose|so that|in order to|because|used for)\b/i, label: "Project purpose and context" },
-  { pattern: /\b(colou?r|palette|tone|hue)\b/i, label: "Colour direction" },
-  { pattern: /\b(typeface|font|typograph)\b/i, label: "Typography requirements" },
-  { pattern: /\b(grid|layout|spacing|hierarchy|alignment)\b/i, label: "Layout and hierarchy expectations" },
-  { pattern: /\b(responsive|mobile|tablet|breakpoint)\b/i, label: "Responsive behaviour" },
-  { pattern: /\b(accessible|accessibility|contrast|wcag)\b/i, label: "Accessibility requirements" },
-  { pattern: /\b(return|output|format|deliverable|deliver)\b/i, label: "Expected output format" },
-  { pattern: /\b(must|avoid|do not|don't|never|limit)\b/i, label: "Explicit constraints" },
+  { pattern: /\b(audience|users?|customers?|team|persona|operations leads)\b/i, label: "Target audience" },
+  { pattern: /\b(objective|goal|purpose|so that|in order to|because|used for|helps?|review)\b/i, label: "Project purpose and context" },
+  {
+    pattern:
+      /\b(colou?rs?|palette|tone|hue|charcoal|orange|amber|yellow|pink|red|green|blue|purple|teal|neutrals?|monochrome|dark|light|white|black|bright|warm|cool|accent)\b/i,
+    label: "Colour direction",
+  },
+  {
+    pattern: /\b(typeface|font|typograph|grotesk|monospace|serif|sans[- ]serif|type scale)\b/i,
+    label: "Typography requirements",
+  },
+  {
+    pattern: /\b(grid|layout|composition|spacing|hierarchy|alignment|focal|reading order|whitespace)\b/i,
+    label: "Layout and hierarchy expectations",
+  },
+  { pattern: /\b(responsive|mobile|tablet|breakpoint|360px)\b/i, label: "Responsive behaviour" },
+  { pattern: /\b(accessible|accessibility|contrast|wcag|focus ring|keyboard)\b/i, label: "Accessibility requirements" },
+  { pattern: /\b(return|output|format|deliverable|deliver|section by section|rationale)\b/i, label: "Expected output format" },
+  { pattern: /\b(must|avoid|do not|don't|never|limit|only)\b/i, label: "Explicit constraints" },
 ];
 
 export type HeuristicInput = {
@@ -219,12 +248,32 @@ export function heuristicEvaluate({
     .map((dimension) => {
       const rule = rules[dimension.key];
       const severity = dimension.score < 40 ? "high" : dimension.score < 58 ? "medium" : "low";
-      const evidence = findEvidence(text, rules[dimension.key].signals);
+      const found = rule.signals
+        .filter((signal) => new RegExp(signal.pattern.source, "i").test(text))
+        .map((signal) => signal.label);
+      const absent = rule.signals
+        .filter((signal) => !new RegExp(signal.pattern.source, "i").test(text))
+        .map((signal) => signal.label);
+
+      let problem: string;
+      if (found.length === 0) {
+        problem = `${dimension.label} scores ${dimension.score}: ${rule.missing}.`;
+      } else if (absent.length > 0) {
+        problem = `${dimension.label} scores ${dimension.score}: the prompt includes ${formatList(
+          found.slice(0, 2),
+        )}, but does not address ${formatList(absent.slice(0, 2))}.`;
+      } else {
+        problem = `${dimension.label} scores ${dimension.score}: every tracked signal is present, but the instructions remain thin for a reliable result.`;
+      }
+
       return {
         dimension: dimension.key,
         severity,
-        problem: `${dimension.label} scores ${dimension.score}: ${rule.missing}.`,
-        evidence,
+        problem,
+        evidence:
+          dimension.key === "clarity" || dimension.key === "visual_direction"
+            ? findVagueEvidence(text)
+            : undefined,
         suggestion: rule.suggestion,
       };
     });
@@ -271,17 +320,21 @@ export function heuristicEvaluate({
   };
 }
 
-function findEvidence(text: string, signals: Signal[]): string | undefined {
-  for (const signal of signals) {
-    const match = text.match(new RegExp(signal.pattern.source, "i"));
-    if (match?.index !== undefined) {
-      const start = Math.max(0, match.index - 40);
-      const end = Math.min(text.length, match.index + match[0].length + 40);
-      const excerpt = text.slice(start, end).replace(/\s+/g, " ").trim();
-      return `${start > 0 ? "…" : ""}${excerpt}${end < text.length ? "…" : ""}`;
-    }
-  }
-  return undefined;
+function findVagueEvidence(text: string): string | undefined {
+  const vague = /\b(nice|good|great|clean|professional|modern|beautiful|amazing|user-friendly|intuitive|whatever|etc)\b/i;
+  const match = text.match(vague);
+  if (match?.index === undefined) return undefined;
+
+  const start = Math.max(0, match.index - 50);
+  const end = Math.min(text.length, match.index + match[0].length + 50);
+  const excerpt = text.slice(start, end).replace(/\s+/g, " ").trim();
+  return `${start > 0 ? "…" : ""}${excerpt}${end < text.length ? "…" : ""}`;
+}
+
+function formatList(items: string[]): string {
+  if (items.length === 0) return "nothing";
+  if (items.length === 1) return items[0]!;
+  return `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
 export function heuristicWordCount(prompt: string) {

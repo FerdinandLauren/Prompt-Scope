@@ -14,6 +14,7 @@ export type PendingPrompt = {
 export function savePendingPrompt(pending: PendingPrompt) {
   try {
     sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    window.dispatchEvent(new Event("promptscope:handoff"));
   } catch {
     // Session storage may be unavailable; navigation still works without the handoff.
   }
@@ -41,6 +42,7 @@ export function readPendingPrompt(): PendingPrompt | null {
 export function clearPendingPrompt() {
   try {
     sessionStorage.removeItem(PENDING_KEY);
+    window.dispatchEvent(new Event("promptscope:handoff"));
   } catch {
     // ignore
   }
