@@ -42,7 +42,7 @@ export function EvaluationDetailsInline({ evaluation }: { evaluation: Evaluation
           {evaluation.dimensionDetails.map((dimension) => (
             <li key={dimension.key} className="flex items-center gap-2">
               <span className="w-[92px] shrink-0 text-[11.5px] text-ink-2">{dimension.label}</span>
-              <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-[#232a31]">
+              <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-[var(--track)]">
                 <span
                   className="block h-full rounded-full"
                   style={{
@@ -160,7 +160,7 @@ export function SavePromptDialog({
         className="h-9 w-full rounded-[6px] border border-line bg-bg-raised px-3 text-[13px] text-ink focus:border-orange focus:outline-none focus:ring-2 focus:ring-orange/15"
       />
       {error ? (
-        <p className="mt-1.5 text-[11px] text-[#f0a1a5]" role="alert">
+        <p className="mt-1.5 text-[11px] text-[var(--danger-text)]" role="alert">
           {error}
         </p>
       ) : null}
@@ -254,7 +254,7 @@ export function SessionDetail({
               key={version.id}
               className={cn(
                 "rounded-[8px] border px-4 py-3.5",
-                isCurrent ? "border-[#5a402b] bg-[#1a1510]" : "border-line bg-bg",
+                isCurrent ? "border-[var(--accent-border)] bg-[var(--accent-bg)]" : "border-line bg-bg",
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -443,7 +443,7 @@ export function SessionDetail({
                       onDeleteVersion(version.id);
                       showToast(`Version ${version.versionNumber} deleted.`, "info");
                     }}
-                    className={buttonClass({ variant: "ghost", size: "sm", className: "text-[#f0a1a5]" })}
+                    className={buttonClass({ variant: "ghost", size: "sm", className: "text-[var(--danger-text)]" })}
                   >
                     <X size={12} aria-hidden="true" />
                     Delete version

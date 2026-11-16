@@ -26,8 +26,8 @@ export function DeltaPill({ change, className }: { change: number; className?: s
     <span
       className={cn(
         "inline-flex h-[20px] min-w-[42px] items-center justify-center rounded-[3px] border px-1.5 font-mono text-[10px] tabular",
-        tone === "positive" && "border-[#244434] bg-[#101d16] text-green",
-        tone === "negative" && "border-[#5b2b2e] bg-[#241416] text-[#f0a1a5]",
+        tone === "positive" && "border-[var(--ok-border)] bg-[var(--ok-bg)] text-green",
+        tone === "negative" && "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger-text)]",
         tone === "flat" && "border-line bg-surface text-ink-3",
         className,
       )}

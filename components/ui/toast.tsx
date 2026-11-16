@@ -47,9 +47,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={toast.id}
               role={toast.tone === "error" ? "alert" : "status"}
               className={cn(
-                "pointer-events-auto flex items-start gap-2.5 rounded-[8px] border bg-surface px-3.5 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-200 ease-out",
+                "pointer-events-auto flex items-start gap-2.5 rounded-[8px] border bg-surface px-3.5 py-3 shadow-[0_10px_30px_var(--shadow-soft)] transition-[opacity,transform] duration-200 ease-out",
                 toast.leaving ? "translate-y-1 opacity-0" : "enter-rise",
-                toast.tone === "error" ? "border-[#5b2b2e]" : "border-line",
+                toast.tone === "error" ? "border-[var(--danger-border)]" : "border-line",
               )}
             >
               <Icon
@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "mt-0.5 shrink-0",
                   toast.tone === "success" && "text-green",
-                  toast.tone === "error" && "text-[#f0a1a5]",
+                  toast.tone === "error" && "text-[var(--danger-text)]",
                   toast.tone === "info" && "text-ink-2",
                 )}
                 aria-hidden="true"

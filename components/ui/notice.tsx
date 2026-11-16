@@ -20,9 +20,9 @@ export function Notice({
     <div
       className={cn(
         "flex items-start gap-3 rounded-[8px] border px-3.5 py-3",
-        tone === "error" && "border-[#5b2b2e] bg-[#1b1113]",
-        tone === "success" && "border-[#244434] bg-[#0e1913]",
-        tone === "demo" && "border-[#53462a] bg-[#19150e]",
+        tone === "error" && "border-[var(--danger-border)] bg-[var(--danger-surface)]",
+        tone === "success" && "border-[var(--ok-border)] bg-[var(--ok-bg-alt)]",
+        tone === "demo" && "border-[var(--warn-border)] bg-[var(--warn-bg)]",
         tone === "info" && "border-line bg-bg-raised",
         className,
       )}
@@ -33,7 +33,7 @@ export function Notice({
         strokeWidth={1.8}
         className={cn(
           "mt-0.5 shrink-0",
-          tone === "error" && "text-[#f0a1a5]",
+          tone === "error" && "text-[var(--danger-text)]",
           tone === "success" && "text-green",
           tone === "demo" && "text-amber",
           tone === "info" && "text-ink-3",
@@ -52,7 +52,7 @@ export function Notice({
 export function LoadingLine({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3" role="status" aria-live="polite">
-      <div className="relative h-[2px] w-24 overflow-hidden rounded-full bg-[#2a3036]">
+      <div className="relative h-[2px] w-24 overflow-hidden rounded-full bg-[var(--track)]">
         <div className="scan-line absolute inset-y-0 w-1/3 bg-orange" />
       </div>
       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-2">{label}</span>

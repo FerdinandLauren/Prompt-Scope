@@ -43,7 +43,7 @@ export function Modal({
         if (event.target === ref.current) onClose();
       }}
       className={cn(
-        "m-auto w-[calc(100vw-2rem)] rounded-[10px] border border-line bg-surface p-0 text-ink shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop:bg-black/70 backdrop:backdrop-blur-[2px]",
+        "m-auto w-[calc(100vw-2rem)] rounded-[10px] border border-line bg-surface p-0 text-ink shadow-[0_24px_80px_var(--shadow-strong)] backdrop:bg-black/70 backdrop:backdrop-blur-[2px]",
         width === "sm" && "max-w-[420px]",
         width === "md" && "max-w-[560px]",
         width === "lg" && "max-w-[760px]",

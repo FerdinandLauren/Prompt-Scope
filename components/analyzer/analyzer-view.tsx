@@ -362,7 +362,7 @@ function EmptyAnalysis() {
         {Array.from({ length: 8 }).map((_, index) => (
           <span
             key={index}
-            className="h-8 w-[3px] rounded-full bg-[#242a30]"
+            className="h-8 w-[3px] rounded-full bg-[var(--track)]"
             style={{ height: `${18 + (index % 4) * 6}px` }}
           />
         ))}
@@ -392,9 +392,9 @@ function AnalysisSkeleton() {
   return (
     <div className="space-y-4" aria-hidden="true">
       <div className="rounded-[10px] border border-line bg-bg-raised p-5">
-        <div className="h-3 w-24 animate-pulse rounded-full bg-[#232a31]" />
-        <div className="mt-4 h-14 w-40 animate-pulse rounded-[6px] bg-[#232a31]" />
-        <div className="mt-4 h-2 w-full animate-pulse rounded-full bg-[#1d232a]" />
+        <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--track)]" />
+        <div className="mt-4 h-14 w-40 animate-pulse rounded-[6px] bg-[var(--track)]" />
+        <div className="mt-4 h-2 w-full animate-pulse rounded-full bg-[var(--track)]" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (

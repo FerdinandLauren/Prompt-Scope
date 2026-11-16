@@ -132,7 +132,7 @@ export function EvaluationResults({
                 </div>
               </div>
               <div className="min-w-0">
-                <div className="h-[3px] w-full overflow-hidden rounded-full bg-[#232a31]">
+                <div className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--track)]">
                   <div
                     className="h-full rounded-full transition-[width] duration-500 ease-out"
                     style={{ width: `${dimension.score}%`, background: scoreColor(dimension.score) }}
@@ -236,12 +236,12 @@ export function EvaluationResults({
       </div>
 
       {snapshot.contradictions.length > 0 ? (
-        <section className="rounded-[10px] border border-[#5b2b2e] bg-[#1b1113] px-5 py-4">
-          <h2 className="mono-label text-[#f0a1a5]">Potential contradictions</h2>
+        <section className="rounded-[10px] border border-[var(--danger-border)] bg-[var(--danger-surface)] px-5 py-4">
+          <h2 className="mono-label text-[var(--danger-text)]">Potential contradictions</h2>
           <ul className="mt-2.5 space-y-2">
             {snapshot.contradictions.map((item) => (
               <li key={item} className="flex items-start gap-2 text-[12.5px] leading-[1.6] text-ink-2">
-                <CircleAlert size={13} className="mt-0.5 shrink-0 text-[#f0a1a5]" aria-hidden="true" />
+                <CircleAlert size={13} className="mt-0.5 shrink-0 text-[var(--danger-text)]" aria-hidden="true" />
                 {item}
               </li>
             ))}

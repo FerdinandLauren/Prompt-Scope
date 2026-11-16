@@ -71,7 +71,7 @@ export function ComparisonView() {
                       aria-current={active ? "true" : undefined}
                       className={cn(
                         "w-full rounded-[7px] border px-3.5 py-3 text-left transition-[border-color,background-color] duration-150",
-                        active ? "border-[#5a402b] bg-[#1a1510]" : "border-line bg-bg-raised hover:border-[#3b424a]",
+                        active ? "border-[var(--accent-border)] bg-[var(--accent-bg)]" : "border-line bg-bg-raised hover:border-[var(--line-strong)]",
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -84,7 +84,7 @@ export function ComparisonView() {
                             comparison.overallChange > 0
                               ? "text-green"
                               : comparison.overallChange < 0
-                                ? "text-[#f0a1a5]"
+                                ? "text-[var(--danger-text)]"
                                 : "text-ink-3",
                           )}
                         >

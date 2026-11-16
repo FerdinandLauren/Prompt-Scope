@@ -218,7 +218,7 @@ export function DashboardView() {
                   href={action.href}
                   className="group grid grid-cols-[32px_1fr_auto] items-start gap-4 py-4 transition-colors duration-150 hover:bg-surface/50 sm:grid-cols-[36px_1fr_auto] sm:px-2"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-line bg-bg-raised text-ink-3 transition-colors duration-150 group-hover:border-[#3b424a] group-hover:text-orange">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-line bg-bg-raised text-ink-3 transition-colors duration-150 group-hover:border-[var(--line-strong)] group-hover:text-orange">
                     <Icon size={15} strokeWidth={1.7} aria-hidden="true" />
                   </span>
                   <span>
@@ -347,7 +347,7 @@ export function DashboardView() {
                     className={cn(
                       "mt-2 font-mono text-[30px] leading-none tracking-[-0.04em]",
                       item.tone === "delta" && item.value > 0 && "text-green",
-                      item.tone === "delta" && item.value < 0 && "text-[#f0a1a5]",
+                      item.tone === "delta" && item.value < 0 && "text-[var(--danger-text)]",
                       item.tone === "delta" && item.value === 0 && "text-ink-3",
                       item.tone === "flat" && "text-ink",
                     )}

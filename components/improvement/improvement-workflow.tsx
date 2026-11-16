@@ -295,7 +295,7 @@ export function ImprovementWorkflow({
                 ) : null}
 
                 {improvement.assumptions.length > 0 ? (
-                  <div className="rounded-[8px] border border-[#53462a] bg-[#19150e] px-4 py-3">
+                  <div className="rounded-[8px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3">
                     <h3 className="mono-label text-amber">Assumptions instead of invented facts</h3>
                     <ul className="mt-2 space-y-1.5">
                       {improvement.assumptions.map((item) => (
@@ -458,7 +458,7 @@ export function ComparisonPanel({
                 className={cn(
                   "mt-1.5 font-mono text-[24px] leading-none tracking-[-0.04em]",
                   overallTone === "positive" && "text-green",
-                  overallTone === "negative" && "text-[#f0a1a5]",
+                  overallTone === "negative" && "text-[var(--danger-text)]",
                   overallTone === "flat" && "text-ink-3",
                 )}
               >
@@ -484,7 +484,7 @@ export function ComparisonPanel({
             <h3 className="mono-label">Dimension changes</h3>
             <div className="flex items-center gap-3 font-mono text-[9px] uppercase tracking-[0.1em]">
               <span className="text-green">{comparison.improved.length} up</span>
-              <span className="text-[#f0a1a5]">{comparison.declined.length} down</span>
+              <span className="text-[var(--danger-text)]">{comparison.declined.length} down</span>
               <span className="text-ink-3">{comparison.unchanged.length} flat</span>
             </div>
           </div>
@@ -501,7 +501,7 @@ export function ComparisonPanel({
                     →
                   </span>
                   <span className="w-7 font-mono text-[11px] tabular text-ink">{dimension.improved}</span>
-                  <div className="ml-1 h-[3px] min-w-[40px] flex-1 overflow-hidden rounded-full bg-[#232a31]">
+                  <div className="ml-1 h-[3px] min-w-[40px] flex-1 overflow-hidden rounded-full bg-[var(--track)]">
                     <div
                       className="h-full rounded-full transition-[width] duration-500 ease-out"
                       style={{
@@ -531,7 +531,7 @@ export function ComparisonPanel({
               {comparison.improved.map((key) => (
                 <li
                   key={key}
-                  className="rounded-[3px] border border-[#244434] bg-[#101d16] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-green"
+                  className="rounded-[3px] border border-[var(--ok-border)] bg-[var(--ok-bg)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-green"
                 >
                   {getDimension(key as DimensionKey).label}
                 </li>

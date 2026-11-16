@@ -57,7 +57,7 @@ export function PromptEditor({
     <div
       className={cn(
         "overflow-hidden rounded-[8px] border bg-bg-raised transition-[border-color] duration-150",
-        error ? "border-[#5b2b2e]" : "border-line focus-within:border-[#3b424a]",
+        error ? "border-[var(--danger-border)]" : "border-line focus-within:border-[var(--line-strong)]",
         className,
       )}
     >
@@ -84,7 +84,7 @@ export function PromptEditor({
             <button
               type="button"
               onClick={() => onChange("")}
-              className="flex h-7 w-7 items-center justify-center rounded-[4px] text-ink-3 transition-colors duration-150 hover:bg-surface hover:text-[#f0a1a5]"
+              className="flex h-7 w-7 items-center justify-center rounded-[4px] text-ink-3 transition-colors duration-150 hover:bg-surface hover:text-[var(--danger-text)]"
               aria-label="Clear prompt text"
             >
               <Trash2 size={12} aria-hidden="true" />
@@ -111,7 +111,7 @@ export function PromptEditor({
         <div className="flex min-h-8 flex-wrap items-center justify-between gap-2 border-t border-line-soft px-3 py-1.5">
           <span
             id={error ? `${id}-error` : `${id}-hint`}
-            className={cn("text-[10.5px] leading-[1.45]", error ? "text-[#f0a1a5]" : "text-ink-3")}
+            className={cn("text-[10.5px] leading-[1.45]", error ? "text-[var(--danger-text)]" : "text-ink-3")}
             role={error ? "alert" : undefined}
           >
             {error ?? hint}

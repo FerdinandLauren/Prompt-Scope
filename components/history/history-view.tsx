@@ -152,7 +152,7 @@ export function HistoryView() {
                   aria-pressed={sort === key}
                   className={cn(
                     "h-8 rounded-[5px] border px-2.5 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors duration-150",
-                    sort === key ? "border-[#5a402b] bg-[#1a1510] text-ink" : "border-line text-ink-3 hover:text-ink",
+                    sort === key ? "border-[var(--accent-border)] bg-[var(--accent-bg)] text-ink" : "border-line text-ink-3 hover:text-ink",
                   )}
                 >
                   {label}

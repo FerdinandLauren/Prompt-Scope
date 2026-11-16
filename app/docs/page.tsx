@@ -200,7 +200,7 @@ export default function DocsPage() {
               a guessed result.
             </p>
           </div>
-          <div className="rounded-[8px] border border-[#53462a] bg-[#19150e] px-4 py-3.5">
+          <div className="rounded-[8px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3.5">
             <Badge tone="demo">Demo mode</Badge>
             <p className="mt-3 text-[12px] leading-[1.65] text-ink-2">
               Active when no key is configured. Prompts are evaluated locally by a deterministic rule engine that

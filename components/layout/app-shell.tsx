@@ -206,7 +206,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen ? (
         <div
           id="mobile-system-menu"
-          className="fixed bottom-16 right-2 z-40 w-48 rounded-[8px] border border-line bg-surface p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.4)] lg:hidden"
+          className="fixed bottom-16 right-2 z-40 w-48 rounded-[8px] border border-line bg-surface p-1.5 shadow-[0_12px_32px_var(--shadow-soft)] lg:hidden"
         >
           {systemNavigation.map((item) => (
             <Link

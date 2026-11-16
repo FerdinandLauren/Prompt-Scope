@@ -123,7 +123,7 @@ export function ScopeRadar({
                 if (!payload?.length) return null;
                 const datum = payload[0]?.payload as ChartDatum | undefined;
                 return (
-                  <div className="rounded-[5px] border border-line bg-surface px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+                  <div className="rounded-[5px] border border-line bg-surface px-3 py-2 shadow-[0_8px_24px_var(--shadow-soft)]">
                     <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
                       {datum?.label ?? label}
                     </div>

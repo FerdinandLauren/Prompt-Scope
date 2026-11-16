@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const controlBase =
-  "w-full rounded-[6px] border border-line bg-bg-raised text-[13px] text-ink placeholder:text-ink-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-[#343b43] focus:border-orange focus:outline-none focus:ring-2 focus:ring-orange/15 disabled:opacity-50 disabled:cursor-not-allowed";
+  "w-full rounded-[6px] border border-line bg-bg-raised text-[13px] text-ink placeholder:text-ink-3 transition-[border-color,box-shadow] duration-150 ease-out hover:border-[var(--line-strong-hover)] focus:border-orange focus:outline-none focus:ring-2 focus:ring-orange/15 disabled:opacity-50 disabled:cursor-not-allowed";
 
 export function Field({
   label,
@@ -41,7 +41,7 @@ export function Field({
       </div>
       {children}
       {error ? (
-        <p className="mt-1.5 text-[11px] leading-[1.45] text-[#f0a1a5]" role="alert">
+        <p className="mt-1.5 text-[11px] leading-[1.45] text-[var(--danger-text)]" role="alert">
           {error}
         </p>
       ) : hint ? (

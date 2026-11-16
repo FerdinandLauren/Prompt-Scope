@@ -270,8 +270,8 @@ export function BuilderView() {
                       className={cn(
                         "flex cursor-pointer items-start gap-3 rounded-[7px] border p-3.5 transition-[border-color,background-color] duration-150",
                         active
-                          ? "border-[#5a402b] bg-[#1a1510]"
-                          : "border-line bg-bg-raised hover:border-[#3b424a]",
+                          ? "border-[var(--accent-border)] bg-[var(--accent-bg)]"
+                          : "border-line bg-bg-raised hover:border-[var(--line-strong)]",
                       )}
                     >
                       <input
@@ -280,7 +280,7 @@ export function BuilderView() {
                         value={item.id}
                         checked={active}
                         onChange={() => update("category", item.id)}
-                        className="mt-0.5 h-3.5 w-3.5 accent-[#FF9B54]"
+                        className="mt-0.5 h-3.5 w-3.5 accent-[var(--orange)]"
                       />
                       <span>
                         <span className="flex items-center gap-2 text-[12px] font-medium text-ink">
@@ -458,8 +458,8 @@ export function BuilderView() {
                       className={cn(
                         "group relative flex flex-col gap-2 rounded-[5px] border px-2.5 py-2 text-left transition-[border-color,background-color,color] duration-150",
                         active
-                          ? "border-[#5a402b] bg-[#1a1510]"
-                          : "border-line bg-bg hover:border-[#3b424a] hover:bg-surface",
+                          ? "border-[var(--accent-border)] bg-[var(--accent-bg)]"
+                          : "border-line bg-bg hover:border-[var(--line-strong)] hover:bg-surface",
                       )}
                     >
                       <span className="flex h-6 items-end gap-[2px]" aria-hidden="true">
@@ -468,7 +468,7 @@ export function BuilderView() {
                             key={definition.key}
                             className={cn(
                               "w-[3px] rounded-[1px]",
-                              active ? "bg-orange" : "bg-[#3a4149] group-hover:bg-[#4a525b]",
+                              active ? "bg-orange" : "bg-[var(--bar)] group-hover:bg-[var(--bar-hover)]",
                             )}
                             style={{ height: `${Math.max(12, preset.values[definition.key as SliderKey] * 0.24)}px` }}
                           />
@@ -542,7 +542,7 @@ export function BuilderView() {
               </Notice>
             ) : null}
             {errors.objective ? (
-              <p className="mt-2 text-[11px] text-[#f0a1a5]" role="alert">
+              <p className="mt-2 text-[11px] text-[var(--danger-text)]" role="alert">
                 {errors.objective}
               </p>
             ) : null}

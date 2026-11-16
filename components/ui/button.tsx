@@ -15,13 +15,13 @@ export function buttonClass({
   return cn(
     "relative inline-flex shrink-0 items-center justify-center gap-2 overflow-hidden rounded-[6px] border font-medium transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.99] disabled:pointer-events-none disabled:opacity-45",
     variant === "primary" &&
-      "border-orange bg-orange text-[#0B0C0E] hover:border-[#ffab6d] hover:bg-[#ffab6d]",
+      "border-orange bg-orange text-[var(--on-accent)] hover:border-[var(--orange-hover)] hover:bg-[var(--orange-hover)]",
     variant === "secondary" &&
-      "border-line bg-transparent text-ink hover:border-[#3b424a] hover:bg-surface",
+      "border-line bg-transparent text-ink hover:border-[var(--line-strong)] hover:bg-surface",
     variant === "ghost" &&
       "border-transparent bg-transparent text-ink-2 hover:bg-surface hover:text-ink",
     variant === "danger" &&
-      "border-[#5b2b2e] bg-[#2a1618] text-[#f0a1a5] hover:border-[#7a3a3e] hover:bg-[#341b1d]",
+      "border-[var(--danger-border)] bg-[var(--danger-bg)] text-[var(--danger-text)] hover:border-[var(--danger-border-hover)] hover:bg-[var(--danger-bg-hover)]",
     size === "sm" && "h-8 px-3 text-[12px]",
     size === "md" && "h-9 px-3.5 text-[13px]",
     size === "lg" && "h-10 px-4 text-[13px]",

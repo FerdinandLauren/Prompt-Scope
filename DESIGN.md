@@ -2,7 +2,7 @@
 
 ## Direction
 
-**An optical instrument for language.** PromptScope should feel like a calibrated analysis instrument in a quiet studio: dark, precise, editorial, and warm at the point of measurement. The visual idea comes from the product's name — a scope — not from generic "AI dashboard" chrome.
+**An optical instrument for language.** PromptScope should feel like a calibrated analysis instrument in a quiet studio: precise, editorial, and warm at the point of measurement. The visual idea comes from the product's name — a scope — not from generic "AI dashboard" chrome. It ships in a dark studio theme and a warm paper light theme, both driven by the same semantic tokens.
 
 - Data is the light. Warm orange marks the current measurement; muted rose marks the earlier state.
 - Technical metadata behaves like instrument markings: small, monospaced, aligned, never decorative noise.
@@ -15,22 +15,36 @@ The **aperture mark**: a circle with eight radial ticks (one per evaluation dime
 
 ## Palette
 
-| Token | Value | Role |
-|---|---|---|
-| `--bg` | `#0B0C0E` | page ground |
-| `--bg-raised` | `#101216` | quiet section ground |
-| `--surface` | `#14171B` | panel surface |
-| `--surface-2` | `#191D22` | elevated control |
-| `--line` | `#292E34` | structural hairline |
-| `--line-soft` | `#1F2429` | internal rule |
-| `--ink` | `#F2F3F5` | primary text |
-| `--ink-2` | `#A0A6AE` | secondary text |
-| `--ink-3` | `#7C838C` | metadata / disabled (≥4.5:1 on every ground) |
-| `--orange` | `#FF9B54` | current measurement, primary action |
-| `--amber` | `#F2C879` | scores, demo marker |
-| `--rose` | `#E98DB2` | original series, secondary highlight |
-| `--green` | `#65C99A` | resolved / positive |
-| `--red` | `#E4777D` | negative / high severity |
+Two themes share one semantic token set: `:root` is the dark studio, `[data-theme="light"]` overrides
+every value. Components read tokens instead of hardcoding surfaces, statuses, or accents, so both
+themes stay correct by construction. The choice is stored per browser and defaults to the system
+preference.
+
+| Token | Dark | Light | Role |
+|---|---|---|---|
+| `--bg` | `#0B0C0E` | `#F6F4F0` | page ground |
+| `--bg-raised` | `#101216` | `#FFFFFF` | panel surface |
+| `--surface` | `#14171B` | `#EFECE5` | quiet section ground |
+| `--surface-2` | `#191D22` | `#E7E2D9` | elevated control |
+| `--line` | `#292E34` | `#D6D0C6` | structural hairline |
+| `--line-soft` | `#1F2429` | `#E4DFD6` | internal rule |
+| `--line-strong` | `#3B424A` | `#BFB8AC` | hover and control borders |
+| `--ink` | `#F2F3F5` | `#17191C` | primary text |
+| `--ink-2` | `#A0A6AE` | `#4C5359` | secondary text |
+| `--ink-3` | `#7C838C` | `#616870` | metadata (≥4.5:1 on every ground) |
+| `--orange` | `#FF9B54` | `#C2410C` | current measurement, primary action |
+| `--orange-hover` | `#FFAB6D` | `#A93A0A` | action hover |
+| `--on-accent` | `#0B0C0E` | `#FFFFFF` | text on an accent fill |
+| `--amber` | `#F2C879` | `#8A5A00` | scores, demo marker |
+| `--rose` | `#E98DB2` | `#A63B6B` | original series, secondary highlight |
+| `--green` | `#65C99A` | `#1D7A52` | resolved / positive |
+| `--red` | `#E4777D` | `#A32E36` | negative / high severity |
+
+Status surfaces are paired tokens (`--danger-bg` / `--danger-border` / `--danger-text`, and the same
+set for warning and success) so a badge or notice reads correctly on either ground.
+`tests/ui/theme-tokens.test.ts` asserts both blocks define every token and that each
+foreground/background pair clears WCAG AA — 7:1 for body text, 4.5:1 for everything else — in both
+themes.
 
 Colour budget: under ~5% of a screen. Orange is reserved for the primary action and the current data series. Status colour always ships with a text label.
 
