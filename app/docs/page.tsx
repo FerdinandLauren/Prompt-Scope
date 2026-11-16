@@ -194,10 +194,10 @@ export default function DocsPage() {
           <div className="rounded-[8px] border border-line bg-bg-raised px-4 py-3.5">
             <Badge tone="live">Live AI mode</Badge>
             <p className="mt-3 text-[12px] leading-[1.65] text-ink-2">
-              Enabled automatically when <span className="font-mono">GEMINI_API_KEY</span> is present in the server
-              environment. Prompts are sent to the configured Gemini model with structured JSON output. Model
-              responses are validated against a schema; an unrepairable response becomes an explicit error rather than
-              a guessed result.
+              Active when a usable key is available. <span className="font-mono">GEMINI_API_KEY</span> in the server
+              environment is the default; you can also save a key from Settings for this browser. Prompts are sent to
+              the configured Gemini model with structured JSON output. Model responses are validated against a schema;
+              an unrepairable response becomes an explicit error rather than a guessed result.
             </p>
           </div>
           <div className="rounded-[8px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3.5">
@@ -219,6 +219,7 @@ export default function DocsPage() {
             "Scores are model-assisted assessments; the same prompt may score differently across runs or models.",
             "Demo Mode uses a rule engine, so its explanations are keyword-driven rather than semantic.",
             "History, versions, and comparisons live in this browser's localStorage only.",
+            "A key saved from Settings is readable by anything running on this origin; the server environment variable is safer for production.",
             "Only the Visual Design and UI/UX categories are implemented; others are planned.",
             "API availability depends on the provider, your quota, and the configured model.",
           ].map((item) => (

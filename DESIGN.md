@@ -57,15 +57,16 @@ Colour budget: under ~5% of a screen. Orange is reserved for the primary action 
 
 ## Layout
 
-- Desktop: 248px fixed sidebar; content column max 1440px with 48px gutters. Asymmetry where useful: a 7/5 split for hero and analysis, a 6/6 builder.
+- Desktop: 264px fixed sidebar; content column max 1560px with 56px gutters. Asymmetry where useful: a 6/6 builder, a 5/7 analyzer, a 4/8 comparison library and detail.
 - Tablet: 208px rail; gutters 32px; grids collapse to 1 column below 960px.
 - Mobile: compact top bar and bottom navigation, 20px gutters, 44px touch targets, single column. Charts resize rather than overflow.
 - Spacing rhythm: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96. More space above a heading than below it.
+- Density rule: one border per surface. A diagnostic result is one continuous sheet with internal rules — not a stack of nested cards. Nested panels are only used when the inner element is independently actionable (a saved-key strip, a quoted evidence block).
 - Radii: 6px controls, 10px panels, 999px only for status dots and score rings. No universal pill/card language.
 
 ## Components
 
-- **Buttons:** 38px default, 6px radius, 1px border; primary is warm orange with near-black text. Press feedback at pointer-down. Loading replaces the label with a measured progress line, not a spinning novelty.
+- **Buttons:** 38px default, 6px radius, 1px border; primary is a warm accent fill with `--on-accent` text. Press feedback at pointer-down. Loading replaces the label with a measured progress line, not a spinning novelty.
 - **Inputs:** flat surface, 1px line, orange focus ring at 2px offset; error text beneath, never colour alone.
 - **Sliders:** thin 2px track, 12px thumb with a fine outer ring, value in mono on the right, preset row above. Keyboard accessible via native range input.
 - **Panels:** one hairline border, no shadow. Section headers use a short mono label and a rule to the edge.
@@ -88,11 +89,12 @@ Plain, specific, calm. Controls name their action ("Generate prompt", "Analyze p
 ## Accessibility floor
 
 - Keyboard-operable controls with visible focus.
-- Contrast: body/secondary ≥ 4.5:1; large text ≥ 3:1.
+- Contrast: body/secondary ≥ 4.5:1; large text ≥ 3:1. The token suite enforces 7:1 for body and 4.5:1 for metadata and status pairs in both themes.
 - Every chart has a textual dimension table.
 - Severity and status always have words.
 - Native range inputs for sliders; labelled textareas.
 - Reduced motion respected; no horizontal overflow at 360px.
+- Theme choice: system by default; explicit light and dark are remembered; `color-scheme` and `data-theme` are set before paint.
 
 ## Avoid
 

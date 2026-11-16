@@ -24,16 +24,20 @@ Interface               components/*        ← results, radar, comparison, hist
 Local persistence       lib/storage/*       ← localStorage sessions, comparisons, handoff
 ```
 
-The browser never holds an API key and never computes an overall score. The server never trusts a
-score that arrives from the browser or a total that arrives from a model.
+The browser never computes an overall score. The server never trusts a score that arrives from the
+browser or a total that arrives from a model. The browser holds no key by default; a key entered in
+Settings is kept in browser storage by explicit user choice and travels only to this application's
+own AI routes, where it is used for that request alone.
 
 ## 2. Directory map
 
 | Path | Responsibility |
 |---|---|
 | `app/` | Routes and route handlers. Pages are thin; views live in `components/`. |
-| `app/api/ai/{generate,analyze,improve,status}/route.ts` | HTTP boundary: validate, throttle, delegate, normalise errors. |
+| `app/api/ai/{generate,analyze,improve,status,verify}/route.ts` | HTTP boundary: validate, throttle, delegate, normalise errors. |
 | `components/layout/` | Shell, navigation, workspace headers. |
+| `components/theme/` | Theme segmented control and the quick light/dark toggle. |
+| `components/settings/` | Settings view and the browser key panel. |
 | `components/ui/` | Design-system primitives (button, field, slider, prompt editor, modal, notice, toast, disclosure). |
 | `components/analyzer/` | Analyzer workspace and the evaluation result surface. |
 | `components/improvement/` | Improve → re-evaluate → compare workflow and the shared comparison panel. |
@@ -42,6 +46,9 @@ score that arrives from the browser or a total that arrives from a model.
 | `components/comparison/` | Saved comparison records. |
 | `config/` | Categories, slider definitions and presets, the evaluation rubric, sample prompts, app constants. |
 | `lib/ai/` | Provider client, structured-call wrapper, instructions, schemas, error normalisation, throttling, demo engine. |
+| `lib/security/` | Browser key header name, validation and masking, shared by client and server. |
+| `lib/settings/` | Copy that describes the active key source. |
+| `lib/theme/` | Theme preference storage, resolution and the pre-paint script. |
 | `lib/scoring/` | Score calculation, comparison maths, prompt fingerprints. |
 | `lib/storage/` | localStorage adapters with corrupt-data tolerance and `useSyncExternalStore`-safe snapshots. |
 | `lib/validation/` | Zod schemas shared by the client form and the server boundary. |
@@ -51,10 +58,20 @@ score that arrives from the browser or a total that arrives from a model.
 
 ## 3. AI integration
 
-**One provider instance.** `lib/ai/client.ts` lazily constructs the Gen AI SDK from
-`process.env.GEMINI_API_KEY` and exposes `getAiStatus()`. A missing or placeholder key switches the
-whole application to Demo Mode; the key is read only on the server, and `server-only` guards the
-module so it can never be bundled into client code.
+**Key resolution.** `lib/ai/client.ts` resolves the active key for each request with a fixed priority:
+
+1. a usable browser key supplied in the `x-promptscope-api-key` header;
+2. the server environment key `GEMINI_API_KEY`;
+3. no key, which switches the request to Demo Mode.
+
+An environment key uses one cached provider instance. A browser key builds a request-scoped instance
+and never replaces the process-wide provider, so one visitor's key cannot serve another visitor's
+request. `app/api/ai/status` reports the mode, model and source (`environment`, `browser` or `none`)
+without ever returning the key. `app/api/ai/verify` performs one minimal call so Settings can confirm a
+key before it is kept. `lib/security/browser-api-key.ts` validates the header and masks the value;
+`lib/api/client.ts` attaches the stored key only to this application's own `/api/ai/*` URLs. A missing
+or placeholder key switches the whole application to Demo Mode; `server-only` guards the AI modules so
+they can never be bundled into client code.
 
 **One structured call path.** `lib/ai/provider.ts#callStructured`:
 
@@ -79,7 +96,8 @@ module so it can never be bundled into client code.
 forbid inventing evidence, rewarding length, or producing an overall score.
 
 **Errors.** `lib/ai/errors.ts` maps provider failures to a small closed set of codes with retryability
-and a safe user message per code. Raw provider text is kept in `detail` for server logs only.
+and a safe user message per code. Raw provider text is kept in `detail` for server logs only, with the
+request's keys and Google key shapes redacted before anything is written.
 
 **Throttling.** `lib/ai/throttle.ts` is a per-process sliding window (default 12 requests per 60 s per
 client identifier), configurable through `AI_RATE_LIMIT_MAX` and `AI_RATE_LIMIT_WINDOW_MS`.
@@ -110,11 +128,19 @@ labelled `DEMO DATA`.
 
 ## 6. Persistence
 
-Two versioned localStorage keys, both with corrupt-data tolerance and cached snapshots:
+Two versioned localStorage data keys, both with corrupt-data tolerance and cached snapshots:
 
 - `promptscope.sessions.v1` — sessions with an ordered version list. Adding, restoring or editing a
   prompt appends a version; the original version keeps its text and its evaluation snapshot.
 - `promptscope.comparisons.v1` — before/after records capped at 20.
+
+Two preference keys:
+
+- `promptscope.theme.v1` — `system`, `light` or `dark`. A pre-paint script in `app/layout.tsx` applies
+  it to `<html data-theme>` before hydration, so there is no flash and no mismatch.
+- `promptscope.browserApiKey.session` and `promptscope.browserApiKey.device.v1` — a key entered in
+  Settings. The session copy is the default; the device copy exists only after the user ticks
+  “remember this key”, and the UI states the risk before it is stored.
 
 `sessionStorage` carries the builder→analyzer handoff, including the session and version ids when the
 prompt came from history, so a new evaluation attaches to the existing version instead of creating a
@@ -123,8 +149,10 @@ duplicate session. The handoff is read through `useSyncExternalStore` with a ser
 
 ## 7. Interface decisions
 
-- **Design tokens** live in `app/globals.css`: charcoal grounds, hairline borders, warm accents, three
-  type roles (Space Grotesk display, Inter body, JetBrains Mono for measurements).
+- **Design tokens** live in `app/globals.css`: `:root` is the dark studio, `[data-theme="light"]` is the
+  warm paper theme, and both define the same semantic names (grounds, lines, ink, accent, status
+  pairs). Components read tokens, so the two themes stay correct by construction. Three type roles
+  remain (Space Grotesk display, Inter body, JetBrains Mono for measurements).
 - **The aperture mark** (`components/brand/scope-mark.tsx`) is the one signature device: a circle with
   eight ticks, one per dimension, with a progress arc. It appears as the logo, the dashboard
   instrument and the score ring.
@@ -140,6 +168,8 @@ duplicate session. The handoff is read through `useSyncExternalStore` with a ser
 
 - Client state for the analyzer and builder is component state; a page reload clears unsaved work.
 - History is device-local and capped (50 sessions, 20 comparisons).
+- A browser key is only as safe as the browser profile that holds it. It is readable by any script on
+  the origin, so the environment variable remains the recommended production configuration.
 - The rate limiter is in-process, so it does not coordinate across instances.
 - Demo Mode's reasoning is rule-based; it is honest about being a heuristic and never presents itself
   as a model response.

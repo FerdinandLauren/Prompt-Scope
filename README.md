@@ -38,8 +38,13 @@ effective, what is missing, what contradicts itself, or whether the revision act
 - **Comparisons** — every saved before/after record with its radar chart and delta table.
 - **Prompt History** — a searchable library with a detail dialog for versions, evaluations and
   comparison.
-- **Settings** — mode, configuration test, workspace inventory, local data controls and privacy.
+- **Settings** — appearance (system, light or dark), the Gemini key panel with verification, mode
+  details, workspace inventory, local data controls and privacy.
 - **Documentation** — the workflow, score bands, scoring rules, the eight dimensions and the routes.
+
+The interface ships in a dark studio theme and a light paper theme, both driven by the same semantic
+tokens. The toggle lives in the sidebar and in Settings; the choice follows the system by default and
+is remembered per browser.
 
 ## Technology
 
@@ -58,8 +63,9 @@ A full walkthrough is in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ## Live AI Mode and Demo Mode
 
-- **Live AI Mode** activates automatically when `GEMINI_API_KEY` is present. Prompts are sent to
-  Google Gemini through server-side route handlers with schema-constrained JSON output.
+- **Live AI Mode** activates when a usable Gemini key is available. Prompts are sent to Google Gemini
+  through server-side route handlers with schema-constrained JSON output. The key comes from
+  `GEMINI_API_KEY` by default; you can also paste one in **Settings** for local use.
 - **Demo Mode** activates when no key is configured. Prompts are scored locally by a deterministic
   rule engine that inspects the text for real signals — audience, measurable values, named components,
   type roles, constraints, contradictions. Every result is labelled **DEMO DATA** and no request
@@ -90,7 +96,7 @@ prompts, the analyzer, the improver, the radar comparison and history.
 | `npm run start` | Serve the production build |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite (120 tests) |
+| `npm test` | Vitest suite (176 tests) |
 | `npm run check` | Typecheck + lint + tests |
 
 ### Environment variables
@@ -104,6 +110,19 @@ AI_RATE_LIMIT_WINDOW_MS=60000
 
 `.env.local` is git-ignored. Never commit a real key. See
 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for the full variable reference.
+
+### Using a key from the interface
+
+Open **Settings → Gemini API key** and paste a key, then choose **Verify and use**. The verify step
+calls Gemini once; the key is kept only if the call succeeds. It is stored in `sessionStorage` by
+default, so it disappears when the session ends. Ticking **Remember this key on this device** moves it
+to `localStorage` and shows the trade-off before saving. **Clear key** removes both copies and the
+server environment configuration takes over again.
+
+The key travels only in the `x-promptscope-api-key` header to this application's own `/api/ai/*`
+routes. It is used for that request, never replaces the process-wide provider, and is redacted from
+error detail. The environment variable remains the recommended production configuration because it
+never reaches the browser at all.
 
 ## The eight dimensions
 
@@ -131,10 +150,13 @@ app/                    routes and /api/ai route handlers
 components/             layout, ui primitives, analyzer, improvement, visualization, history, comparison
 config/                 categories, slider presets, evaluation rubric, sample prompts
 lib/ai/                 provider client, structured calls, instructions, schemas, errors, throttle, demo engine
+lib/security/           browser key header, validation and masking
+lib/settings/           copy describing the active key source
+lib/theme/              theme preference storage, resolution, pre-paint script
 lib/scoring/            overall score, comparison maths, prompt fingerprint
-lib/storage/            localStorage adapters (sessions, comparisons, handoff)
+lib/storage/            localStorage adapters (sessions, comparisons, handoff, browser key)
 lib/validation/         shared Zod schemas
-hooks/                  local-data and status hooks
+hooks/                  local-data, status, key and theme hooks
 tests/                  vitest suites
 scripts/                puppeteer QA harnesses
 docs/                   architecture, deployment, testing report
@@ -142,23 +164,28 @@ docs/                   architecture, deployment, testing report
 
 ## Quality
 
-- **120 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
-  honesty, the live provider path, error mapping, schemas, throttling, storage and the demo improver.
+- **176 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
+  honesty, the live provider path, request-scoped keys, connection verification, error mapping,
+  schemas, throttling, storage, settings, theme tokens and the demo improver.
+- **Theme contrast is tested, not eyeballed:** both palettes must clear WCAG AA (7:1 for body text,
+  4.5:1 for metadata and status pairs) or the suite fails.
 - **Lighthouse 100** for accessibility and best practices on every route, including the populated
   comparison view.
 - Keyboard operable throughout, with visible focus rings, dialogs that trap and release focus, and
   reduced-motion support.
-- No horizontal overflow at 1440, 900 or 390 px.
+- No horizontal overflow at 1440, 900 or 390 px, in either theme.
 - Full evidence is in [`docs/TESTING.md`](./docs/TESTING.md).
 
 ## Security and privacy
 
-- The Gemini key is read only in server modules guarded by `server-only` and is never in the browser
+- The server key is read only in server modules guarded by `server-only` and is never in the browser
   bundle.
+- A key entered in Settings stays in the browser, is sent only to this application's own AI routes,
+  and is used for that request alone. It is never logged, stored on the server, or committed.
 - Route handlers validate every request body, cap its size, and apply a per-client rate limit.
 - The server never trusts a score sent from the browser or a total sent by a model.
-- Provider failures are logged server-side with raw detail, while the browser receives a safe message
-  and a code.
+- Provider failures are logged server-side with raw detail redacted, while the browser receives a safe
+  message and a code.
 - In Live mode prompt text is transmitted to Google Gemini for processing; do not submit confidential
   business information or personal data. Demo Mode transmits nothing.
 - Scores are model-assisted diagnostics, not a universal measurement of prompt quality.

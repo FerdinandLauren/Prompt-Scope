@@ -1,11 +1,11 @@
 # PromptScope — Testing & QA report
 
-Milestone 7. Every number below came from a command that was actually run against this repository; nothing here is projected.
+Verified 16 November 2026. Every number below came from a command that was actually run against this repository; nothing here is projected.
 
 ## 1. Automated tests
 
 ```bash
-npm test        # vitest, 120 tests, 12 files
+npm test        # vitest, 176 tests, 18 files
 npm run typecheck
 npm run lint
 ```
@@ -24,8 +24,14 @@ npm run lint
 | Demo improver | `tests/ai/demo-improve.test.ts` | 11 | The original text is preserved verbatim; missing facts become confirmation questions, never inventions; the change list covers the dimensions it touched; the revision scores higher on clarity *and* still reports remaining weaknesses. |
 | History storage | `tests/storage/prompt-storage.test.ts` | 13 | Versions append with new ids; earlier versions keep their text and snapshots; editing invalidates only that version's evaluation; the last version cannot be deleted; deleting the current version moves the pointer; corrupted JSON degrades to an empty library. |
 | Comparison storage | `tests/storage/comparison-storage.test.ts` | 8 | Newest-first ordering, id replacement, deletion, corrupted JSON tolerance, and a stable snapshot reference (so React's `useSyncExternalStore` cannot loop). |
+| Browser key contract | `tests/security/browser-api-key.test.ts` | 9 | Header name is single-sourced; blank, placeholder and oversized values are rejected; the mask never returns the full key. |
+| Request-scoped keys | `tests/ai/browser-key-provider.test.ts` | 10 | A browser key wins for its own request while the environment client stays cached; the status payload never contains either key; provider errors redact the key; a full analyze call passes it through. |
+| Connection verification | `tests/ai/verify-connection.test.ts` | 3 | The verify path reports model and source only, fails cleanly with no key, and maps a rejected key without echoing it. |
+| Key and theme preferences | `tests/ui/settings-preferences.test.ts` | 12 | Session storage is the default; the device copy appears only after opt-in; clear removes both; theme falls back to `system`, rejects invalid values, and the pre-paint script matches the storage key. |
+| Settings integration | `tests/ui/browser-key-settings.test.ts` | 6 | The key header is attached to `/api/ai/*` only, never third-party URLs; extra headers are preserved; source copy distinguishes server, browser and demo. |
+| Theme tokens | `tests/ui/theme-tokens.test.ts` | 16 | Both blocks define every semantic token; light is genuinely light; foreground/background pairs clear WCAG AA in both themes. |
 
-**Result:** 120 passed / 120. TypeScript: no errors. ESLint: no errors or warnings.
+**Result:** 176 passed / 176. TypeScript: no errors. ESLint: no errors or warnings.
 
 Two defects were found by these tests and fixed rather than worked around:
 
@@ -46,6 +52,8 @@ Run with `node scripts/qa-<name>.mjs` against `npm run dev`.
 | `qa-history-deep.mjs` | Builder → save → analyze a saved version → improve → append → view evaluation → edit as new version → compare versions. | `versions: 3` (`generated, improved, manual`), evaluations linked to the original version, comparison record created from v1 → v2 |
 | `qa-keyboard-motion.mjs` | Skip link, tab order, slider keys (Arrow/Home/End), disclosure Enter, chip Space, modal focus + Escape, reduced motion, focus rings. | All pass; focus ring is 2px orange at 3px offset; reduced motion converts the entrance to a 0.01ms fade |
 | `qa-screenshots.mjs` | Every route at 1440 / 900 / 390 px, checking scroll width and element overflow. | No page overflow at any width; the mobile docs route overflow found during the audit was fixed by stacking the table instead of shrinking it |
+| `qa-theme-density.mjs` | Both themes on all seven routes at 1440, light mode at 390, reduced motion, a live switch with no reload, and persistence across a reload. | Theme applied before paint on every route, `color-scheme` matches, no console errors, no horizontal overflow (1440 → `scrollWidth` 1440, 390 → 390), reduced-motion entrance is `0.01ms`, choice survives a reload |
+| `qa-final-visuals.mjs` | Seeds a session, an improved version and a comparison, then captures both themes plus generated builder and populated analyzer screens. | Screenshots consistent across themes; seeded store reports 1 session and 1 comparison |
 
 ## 3. Accessibility
 
@@ -59,22 +67,37 @@ The first accessibility pass scored 96: the metadata token `#686F78` measured 3.
 
 Manual keyboard checks (evidence in `qa-keyboard-motion.mjs`): the skip link is the first stop, all navigation and controls are reachable in order, sliders respond to arrow/Home/End keys, disclosures open with Enter, chips toggle with Space, dialogs move focus inside and close with Escape, and severity is always expressed with text as well as colour.
 
+### Theme contrast
+
+`tests/ui/theme-tokens.test.ts` computes WCAG contrast from the real token values in `app/globals.css`
+and fails the suite below AA. Body text (`--ink` on `--bg`) holds 7:1; metadata, status pairs, accent
+labels and severity colours hold 4.5:1 in both the dark studio and the light paper theme. The light
+palette was adjusted twice because the test caught real shortfalls: `--ink-3` measured 4.44:1 on the
+light surface, and the first orange (`#B4500E`) was too close to the ground for comfortable reading.
+
+Theme QA (`scripts/qa-theme-density.mjs`) confirms the pre-paint script sets `data-theme` and
+`color-scheme` before hydration, that switching themes repaints without a reload, that the choice
+survives a reload, and that the layout has no horizontal overflow in either theme at 1440 and 390 px.
+
 ## 4. Security
 
 | Check | Command | Result |
 |---|---|---|
-| No key in the client bundle | scan of `.next/static/chunks/*.js` for `AIza…`, provider endpoints | Only the string `GEMINI_API_KEY` appears, as UI copy in the setup notice. No key value, no provider endpoint. |
-| No secrets tracked | `git ls-files \| grep env` | Only `.env.example` |
+| No key in the client bundle | scan of `.next/static/chunks/*.js` for `AIza…`, `AQ.…`, provider endpoints | No key value and no provider endpoint. `GEMINI_API_KEY` appears only as UI copy in the setup notice. |
+| No secrets tracked | `git ls-files \| grep -i env` | Only `.env.example` |
 | Env file ignored | `git check-ignore -v .env.local` | Matched by `.gitignore` |
-| No key-shaped strings committed | `git grep -E "AIza[0-9A-Za-z_-]{10,}"` | No matches |
-| Provider errors do not leak | `tests/ai/errors.test.ts`, `tests/ai/live-provider.test.ts` | Raw provider text lives in `detail` for server logs; the browser receives `userMessageForCode[code]` |
+| No key-shaped strings committed | `git grep -E "AIza[0-9A-Za-z_-]{10,}"` and `git grep -E "AQ\.[0-9A-Za-z._-]{10,}"` | No matches |
+| Provider errors do not leak | `tests/ai/errors.test.ts`, `tests/ai/live-provider.test.ts`, `tests/ai/browser-key-provider.test.ts` | Raw provider text lives in `detail` for server logs; the request key and Google key shapes are replaced with `***`; the browser receives `userMessageForCode[code]` |
+| Browser key stays request-scoped | `tests/ai/browser-key-provider.test.ts` | The environment provider instance is never replaced by a browser key; status never contains the key |
+| Browser key is opt-in on disk | `tests/ui/settings-preferences.test.ts` | Session storage by default; device storage only after the user ticks remember; clear removes both |
 | Input is validated server-side | `tests/validation/schemas.test.ts`, live endpoint checks | `400` with field errors for a short prompt; `413`-class body limit; browser-supplied scores are discarded |
 
 ## 5. Endpoint checks (live HTTP)
 
 | Request | Observed |
 |---|---|
-| `GET /api/ai/status` | `{ mode: "demo", configured: false }` without a key; `{ mode: "live", model: "gemini-3.8-flash" }` with one |
+| `GET /api/ai/status` | `{ mode: "demo", configured: false, source: "none", model: null }` without a key; `{ mode: "live", configured: true, source: "environment" }` with one; `source: "browser"` when the request carries a usable `x-promptscope-api-key` header |
+| `POST /api/ai/verify` | `{ model, source }` when the provider answers; `missing_api_key` when no key exists; the key is never in the response |
 | `POST /api/ai/generate` | Structured prompt, `source: "demo"` |
 | `POST /api/ai/analyze` | Eight dimensions, server-calculated overall, weaknesses, contradictions |
 | `POST /api/ai/analyze` with a 5-character prompt | `400 invalid_request` with a field message |

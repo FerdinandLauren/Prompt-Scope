@@ -62,6 +62,13 @@ keys on `x-forwarded-for` / `x-real-ip`.
 
 Local development uses `.env.local`, which is git-ignored. Never commit a real key.
 
+The environment key is the recommended configuration. A user can also paste a key into **Settings →
+Gemini API key**; that key lives only in their browser, travels in the `x-promptscope-api-key` header
+to this application's own `/api/ai/*` routes, and is used for that request only. It is never written to
+a server log, a database, or the repository, and it never replaces the environment key for other
+visitors. If a deployment must reject browser keys, block that header at the proxy or remove the
+Settings panel; the environment key continues to work normally.
+
 ## 6. Operational notes
 
 - The model may be retired by the provider; if calls begin failing, update `GEMINI_MODEL` and
