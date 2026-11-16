@@ -165,6 +165,14 @@ const missingChecks: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\b(must|avoid|do not|don't|never|limit|only)\b/i, label: "Explicit constraints" },
 ];
 
+const evidenceDimensions = new Set<DimensionKey>([
+  "clarity",
+  "specificity",
+  "visual_direction",
+  "composition",
+  "typography",
+]);
+
 export type HeuristicInput = {
   prompt: string;
   category: string;
@@ -280,10 +288,8 @@ export function heuristicEvaluate({
         dimension: dimension.key,
         severity,
         problem,
-        evidence:
-          dimension.key === "clarity" || dimension.key === "visual_direction"
-            ? findVagueEvidence(text)
-            : undefined,
+        // Cite vague wording only for dimensions that under-specification affects.
+        evidence: evidenceDimensions.has(dimension.key) ? findVagueEvidence(text) : undefined,
         suggestion: rule.suggestion,
       };
     });

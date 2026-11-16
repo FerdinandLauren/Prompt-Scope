@@ -13,17 +13,23 @@ export class AiError extends Error {
   readonly code: AiErrorCode;
   readonly status: number;
   readonly retryable: boolean;
+  /**
+   * Raw provider detail, kept for server-side logging only. It is never
+   * returned to the browser: routes send `userMessageForCode[code]`.
+   */
+  readonly detail?: string;
 
   constructor(
     code: AiErrorCode,
     message: string,
-    options: { status?: number; retryable?: boolean; cause?: unknown } = {},
+    options: { status?: number; retryable?: boolean; cause?: unknown; detail?: string } = {},
   ) {
     super(message);
     this.name = "AiError";
     this.code = code;
     this.status = options.status ?? statusForCode(code);
     this.retryable = options.retryable ?? (code === "rate_limit" || code === "network" || code === "timeout");
+    this.detail = options.detail;
     if (options.cause !== undefined) this.cause = options.cause;
   }
 }
@@ -63,49 +69,52 @@ export const userMessageForCode: Record<AiErrorCode, string> = {
 };
 
 /**
- * Converts any thrown value into a safe, non-leaking AiError. Raw provider
- * messages never reach the browser.
+ * Converts any thrown value into a safe, non-leaking AiError. The provider's
+ * own text is preserved in `detail` for server logs and is never sent to the
+ * browser.
  */
 export function normalizeProviderError(error: unknown): AiError {
   if (error instanceof AiError) return error;
 
-  const message = error instanceof Error ? error.message : String(error);
-  const status = extractStatus(error, message);
-  const lower = message.toLowerCase();
+  const raw = error instanceof Error ? error.message : String(error);
+  const status = extractStatus(error, raw);
+  const lower = raw.toLowerCase();
+  const message = status
+    ? `Provider request failed with status ${status}.`
+    : "Provider request failed.";
+  const detail = status ? `${status}: ${raw}` : raw;
+  const base = { status, detail, cause: error } as const;
 
   if (status === 429) {
     if (lower.includes("quota") || lower.includes("billing") || lower.includes("free tier")) {
-      return new AiError("quota_exceeded", message, { status, cause: error });
+      return new AiError("quota_exceeded", message, base);
     }
-    return new AiError("rate_limit", message, { status, cause: error });
+    return new AiError("rate_limit", message, base);
   }
   if (status === 401 || status === 403) {
-    return new AiError("missing_api_key", message, { status, retryable: false, cause: error });
+    return new AiError("missing_api_key", message, { ...base, retryable: false });
   }
   if (status === 400) {
     if (lower.includes("api key") || lower.includes("api_key") || lower.includes("credential")) {
-      return new AiError("missing_api_key", message, { status, retryable: false, cause: error });
+      return new AiError("missing_api_key", message, { ...base, retryable: false });
     }
-    return new AiError("invalid_request", message, { status, retryable: false, cause: error });
+    return new AiError("invalid_request", message, { ...base, retryable: false });
   }
   if (status === 404) {
-    return new AiError(
-      "provider_error",
-      `The configured model is unavailable: ${message}`,
-      { status, retryable: false, cause: error },
-    );
+    return new AiError("provider_error", message, { ...base, retryable: false });
   }
   if (status >= 500) {
-    return new AiError("provider_error", message, { status, cause: error });
+    // Provider-side failures are usually transient, so they may be retried once.
+    return new AiError("provider_error", message, { ...base, retryable: true });
   }
   if (lower.includes("timeout") || lower.includes("aborted") || lower.includes("timed out")) {
-    return new AiError("timeout", message, { cause: error });
+    return new AiError("timeout", message, { ...base, status: 0 });
   }
   if (lower.includes("fetch failed") || lower.includes("enotfound") || lower.includes("network")) {
-    return new AiError("network", message, { cause: error });
+    return new AiError("network", message, { ...base, status: 0 });
   }
 
-  return new AiError("provider_error", message, { cause: error });
+  return new AiError("provider_error", message, base);
 }
 
 function extractStatus(error: unknown, message: string): number {

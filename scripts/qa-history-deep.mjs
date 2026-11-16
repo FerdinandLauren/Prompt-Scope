@@ -1,5 +1,4 @@
 import puppeteer from "puppeteer-core";
-import path from "node:path";
 
 const CHROME =
   process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";

@@ -41,7 +41,6 @@ function extractJson(text: string): unknown {
     });
   }
 }
-
 /**
  * One structured call to Gemini, with a single controlled recovery retry when
  * the returned JSON does not satisfy the schema. Missing values are never
@@ -81,14 +80,38 @@ export async function callStructured<T>({
       throw new AiError("invalid_response", `${label}: the provider returned an empty response.`);
     }
 
-    const parsed = schema.safeParse(extractJson(text));
-    const customIssue = parsed.success ? validate?.(parsed.data) ?? null : null;
+    const parsed = (() => {
+      try {
+        return { ok: true as const, value: schema.safeParse(extractJson(text)) };
+      } catch {
+        // Unparseable output is treated as a validation failure so the single
+        // controlled recovery attempt still applies.
+        return { ok: false as const, value: null };
+      }
+    })();
 
-    if (!parsed.success || customIssue) {
+    if (!parsed.ok) {
       if (!isRetry) {
-        const issues = parsed.success
+        return attempt(
+          `${prompt}
+
+Your previous response was not valid JSON. Return only the complete JSON object that matches the schema, with no commentary and no code fences.`,
+          true,
+        );
+      }
+      throw new AiError("invalid_response", `${label}: the provider response was not valid JSON.`, {
+        retryable: false,
+      });
+    }
+
+    const validation = parsed.value!;
+    const customIssue = validation.success ? validate?.(validation.data) ?? null : null;
+
+    if (!validation.success || customIssue) {
+      if (!isRetry) {
+        const issues = validation.success
           ? customIssue
-          : parsed.error.issues
+          : validation.error.issues
               .slice(0, 6)
               .map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`)
               .join("; ");
@@ -109,7 +132,7 @@ ${issues}`,
       );
     }
 
-    return { data: parsed.data, model, text };
+    return { data: validation.data, model, text };
   };
 
   try {

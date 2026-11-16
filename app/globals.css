@@ -30,7 +30,8 @@
   --line-soft: #1f2429;
   --ink: #f2f3f5;
   --ink-2: #a0a6ae;
-  --ink-3: #686f78;
+  /* Metadata still reads as quiet, but clears the 4.5:1 floor on every ground. */
+  --ink-3: #7c838c;
   --orange: #ff9b54;
   --amber: #f2c879;
   --rose: #e98db2;

@@ -27,8 +27,8 @@ export function failureFromError(error: unknown) {
   }
 
   const normalized = normalizeProviderError(error);
-  // Never surface raw provider text to the client.
-  console.error(`[promptscope] ${normalized.code}:`, normalized.message);
+  // Log the provider detail server-side only; the browser receives the safe message.
+  console.error(`[promptscope] ${normalized.code}:`, normalized.detail ?? normalized.message);
   return apiFailure(normalized.code, userMessageForCode[normalized.code], normalized.status);
 }
 

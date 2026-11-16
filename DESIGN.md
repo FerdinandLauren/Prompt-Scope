@@ -25,7 +25,7 @@ The **aperture mark**: a circle with eight radial ticks (one per evaluation dime
 | `--line-soft` | `#1F2429` | internal rule |
 | `--ink` | `#F2F3F5` | primary text |
 | `--ink-2` | `#A0A6AE` | secondary text |
-| `--ink-3` | `#686F78` | metadata / disabled |
+| `--ink-3` | `#7C838C` | metadata / disabled (≥4.5:1 on every ground) |
 | `--orange` | `#FF9B54` | current measurement, primary action |
 | `--amber` | `#F2C879` | scores, demo marker |
 | `--rose` | `#E98DB2` | original series, secondary highlight |
