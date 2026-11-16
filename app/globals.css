@@ -180,11 +180,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
 /* Instrument grid: a quiet coordinate field, never a decorative wash. */
 .instrument-grid {
   background-image:

@@ -170,7 +170,7 @@ docs/                   architecture, deployment, testing report
 - **Theme contrast is tested, not eyeballed:** both palettes must clear WCAG AA (7:1 for body text,
   4.5:1 for metadata and status pairs) or the suite fails.
 - **Lighthouse 100** for accessibility and best practices on every route, including the populated
-  comparison view.
+  comparison view. An axe-core scan of all seven routes in both themes reports 0 WCAG A/AA violations.
 - Keyboard operable throughout, with visible focus rings, dialogs that trap and release focus, and
   reduced-motion support.
 - No horizontal overflow at 1440, 900 or 390 px, in either theme.

@@ -54,6 +54,8 @@ Run with `node scripts/qa-<name>.mjs` against `npm run dev`.
 | `qa-screenshots.mjs` | Every route at 1440 / 900 / 390 px, checking scroll width and element overflow. | No page overflow at any width; the mobile docs route overflow found during the audit was fixed by stacking the table instead of shrinking it |
 | `qa-theme-density.mjs` | Both themes on all seven routes at 1440, light mode at 390, reduced motion, a live switch with no reload, and persistence across a reload. | Theme applied before paint on every route, `color-scheme` matches, no console errors, no horizontal overflow (1440 → `scrollWidth` 1440, 390 → 390), reduced-motion entrance is `0.01ms`, choice survives a reload |
 | `qa-final-visuals.mjs` | Seeds a session, an improved version and a comparison, then captures both themes plus generated builder and populated analyzer screens. | Screenshots consistent across themes; seeded store reports 1 session and 1 comparison |
+| `qa-axe-a11y.mjs` | axe-core (WCAG 2.0/2.1 A + AA) on all seven routes in dark and light. | 0 violations across 14 runs |
+| `qa-settings-key-flow.mjs` | Settings key panel: reveal, remember warning, synthetic-key rejection, blank-submit guard, privacy copy. | Synthetic key is rejected and not retained in either storage; warning appears only after opt-in; blank submit is disabled |
 
 ## 3. Accessibility
 
@@ -78,6 +80,12 @@ light surface, and the first orange (`#B4500E`) was too close to the ground for 
 Theme QA (`scripts/qa-theme-density.mjs`) confirms the pre-paint script sets `data-theme` and
 `color-scheme` before hydration, that switching themes repaints without a reload, that the choice
 survives a reload, and that the layout has no horizontal overflow in either theme at 1440 and 390 px.
+
+An axe-core scan (`scripts/qa-axe-a11y.mjs`) reports **0 violations** across all seven routes in both
+themes. It caught one real defect the token test could not see: an unlayered `a { color: inherit }`
+rule sat above Tailwind's utility layer, so primary links (dashboard, empty states) kept the near-white
+body colour instead of `--on-accent` and measured 1.87:1 on orange in dark mode, 3.4:1 in light. The
+rule was removed — Tailwind preflight already handles anchor colour — and the scan is clean.
 
 ## 4. Security
 
