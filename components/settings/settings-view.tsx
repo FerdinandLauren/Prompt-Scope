@@ -110,7 +110,7 @@ export function SettingsView() {
             { label: "Sessions", value: sessions.length },
             { label: "Versions", value: versionCount },
             { label: "Comparisons", value: comparisons.length },
-            { label: "Dimensions evaluated", value: evaluationDimensions.length },
+            { label: "Rubric dimensions", value: evaluationDimensions.length },
           ].map((item) => (
             <div key={item.label} className="bg-bg-raised px-4 py-4">
               <dt className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">{item.label}</dt>
@@ -142,7 +142,8 @@ export function SettingsView() {
               Clear local data
             </button>
             <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-              {sessions.length} sessions · {comparisons.length} comparisons
+              {sessions.length} {sessions.length === 1 ? "session" : "sessions"} · {comparisons.length}{" "}
+              {comparisons.length === 1 ? "comparison" : "comparisons"}
             </span>
           </div>
         </div>

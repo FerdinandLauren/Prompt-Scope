@@ -90,7 +90,7 @@ export function DashboardView() {
   const stats = [
     { label: "Prompts saved", value: sessions.length },
     { label: "Versions evaluated", value: analysedCount },
-    { label: "Improvements recorded", value: improvedCount },
+    { label: "Improvements", value: improvedCount },
   ];
 
   const spotlight = latestComparison

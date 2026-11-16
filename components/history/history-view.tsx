@@ -75,7 +75,11 @@ export function HistoryView() {
       <WorkspaceHeader
         title="Prompt History"
         description="A local library of prompts, their versions, and the evaluation snapshot recorded for each version."
-        meta={<Badge tone="neutral">{sessions.length} sessions</Badge>}
+        meta={
+          <Badge tone="neutral">
+            {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
+          </Badge>
+        }
         actions={
           <>
             <Link href="/builder" className={buttonClass({ variant: "secondary", size: "md" })}>
