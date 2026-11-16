@@ -160,13 +160,7 @@ export function hasAllDimensions(response: EvaluationResponse) {
  * Drop keywords outside that subset instead of failing the request.
  */
 export function toGeminiJsonSchema(schema: z.ZodType): Record<string, unknown> {
-  const generated = z.toJSONSchema(schema, {
-    target: "draft-7",
-    io: "output",
-    unrepresentable: "any",
-  }) as Record<string, unknown>;
-
-  const unsupported = new Set([
+  return cleanJsonSchema(schema, new Set([
     "$schema",
     "propertyNames",
     "minLength",
@@ -175,7 +169,26 @@ export function toGeminiJsonSchema(schema: z.ZodType): Record<string, unknown> {
     "default",
     "examples",
     "format",
-  ]);
+  ]));
+}
+
+/**
+ * OpenAI-compatible `response_format` accepts JSON Schema, but gateways vary.
+ * The adapter still treats a schema rejection as a recoverable condition.
+ */
+export function toOpenAiJsonSchema(schema: z.ZodType): Record<string, unknown> {
+  return cleanJsonSchema(
+    schema,
+    new Set(["$schema", "examples", "format", "propertyNames"]),
+  );
+}
+
+function cleanJsonSchema(schema: z.ZodType, unsupported: Set<string>): Record<string, unknown> {
+  const generated = z.toJSONSchema(schema, {
+    target: "draft-7",
+    io: "output",
+    unrepresentable: "any",
+  }) as Record<string, unknown>;
 
   const clean = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(clean);

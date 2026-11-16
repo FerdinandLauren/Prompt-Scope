@@ -24,9 +24,9 @@ export function apiFailure(code: string, message: string, status: number, fields
 export function failureFromError(error: unknown) {
   if (error instanceof AiError) {
     // Keep the redacted provider detail in the server log for diagnosis; the
-    // browser only ever receives the safe message below.
+    // browser only ever receives a safe, application-authored message.
     if (error.detail) console.error(`[promptscope] ${error.code}:`, error.detail);
-    return apiFailure(error.code, userMessageForCode[error.code], error.status);
+    return apiFailure(error.code, error.safeMessage ?? userMessageForCode[error.code], error.status);
   }
 
   const normalized = normalizeProviderError(error);

@@ -1,6 +1,7 @@
 import "server-only";
 import { getAiStatus } from "@/lib/ai/client";
 import { callStructured } from "@/lib/ai/provider";
+import type { AiRequestContext } from "@/lib/ai/providers/config";
 import { improvementResponseSchema } from "@/lib/ai/schemas";
 import { buildImprovementInstruction, buildImprovementPrompt } from "@/lib/ai/prompts";
 import { demoImprove } from "@/lib/ai/demo/improve";
@@ -39,7 +40,7 @@ export function normalizePriorities(priorities: string[], category?: string): st
 
 export async function improvePrompt(
   input: ImproveInput,
-  browserApiKey?: string,
+  browserApiKey?: string | AiRequestContext,
 ): Promise<PromptImprovement> {
   const status = getAiStatus(browserApiKey);
   const priorities = normalizePriorities(input.priorities, input.category);
@@ -67,6 +68,8 @@ export async function improvePrompt(
       temperature: 0.4,
       maxOutputTokens: 6144,
       label: "improve",
+      task: "improve",
+      complexity: "high",
       validate: (payload) =>
         payload.improvedPrompt.trim().length < 80
           ? "improvedPrompt must contain the full revised prompt"

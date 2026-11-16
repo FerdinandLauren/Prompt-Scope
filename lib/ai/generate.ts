@@ -4,6 +4,7 @@ import { generationResponseSchema } from "@/lib/ai/schemas";
 import { buildGenerationInstruction, buildGenerationPrompt } from "@/lib/ai/prompts";
 import { demoGenerate } from "@/lib/ai/demo/generate";
 import { getAiStatus } from "@/lib/ai/client";
+import type { AiRequestContext } from "@/lib/ai/providers/config";
 import type { GeneratedPrompt, PromptConfiguration } from "@/types/prompt";
 import type { PromptDepth } from "@/types/guided";
 
@@ -16,7 +17,7 @@ const tokensByDepth: Record<PromptDepth, number> = {
 
 export async function generatePrompt(
   configuration: PromptConfiguration,
-  browserApiKey?: string,
+  browserApiKey?: string | AiRequestContext,
 ): Promise<GeneratedPrompt> {
   const status = getAiStatus(browserApiKey);
 
@@ -35,6 +36,8 @@ export async function generatePrompt(
       temperature: 0.6,
       maxOutputTokens: tokensByDepth[depth],
       label: "generate",
+      task: "generate",
+      complexity: depth === "detailed" || depth === "comprehensive" ? "high" : "medium",
     },
     browserApiKey,
   );

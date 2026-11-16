@@ -1,6 +1,6 @@
 import { improvePrompt } from "@/lib/ai/improve";
 import { apiSuccess, failureFromError, guardRateLimit, readValidatedBody } from "@/lib/api/handler";
-import { resolveBrowserApiKey } from "@/lib/security/browser-api-key";
+import { resolveAiContext } from "@/lib/ai/providers/config";
 import { improveRequestSchema } from "@/lib/validation/schemas";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
   const { originalPrompt, category, rubricVersion, priorities, additionalInstructions, analysis } =
     body.data;
-  const browserApiKey = resolveBrowserApiKey(request);
+  const aiContext = resolveAiContext(request);
 
   try {
     const improvement = await improvePrompt(
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
             }
           : undefined,
       },
-      browserApiKey,
+      aiContext,
     );
 
     return apiSuccess(improvement);

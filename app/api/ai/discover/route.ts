@@ -1,6 +1,6 @@
 import { discoverStep } from "@/lib/ai/discover";
 import { apiSuccess, failureFromError, guardRateLimit, readValidatedBody } from "@/lib/api/handler";
-import { resolveBrowserApiKey } from "@/lib/security/browser-api-key";
+import { resolveAiContext } from "@/lib/ai/providers/config";
 import { discoveryRequestSchema } from "@/lib/validation/schemas";
 
 export const runtime = "nodejs";
@@ -13,10 +13,10 @@ export async function POST(request: Request) {
   const body = await readValidatedBody(request, discoveryRequestSchema);
   if (!body.ok) return body.response;
 
-  const browserApiKey = resolveBrowserApiKey(request);
+  const aiContext = resolveAiContext(request);
 
   try {
-    const result = await discoverStep(body.data, browserApiKey);
+    const result = await discoverStep(body.data, aiContext);
     return apiSuccess(result);
   } catch (error) {
     return failureFromError(error);

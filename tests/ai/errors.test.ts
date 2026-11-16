@@ -6,6 +6,12 @@ function providerError(status: number, message: string) {
 }
 
 describe("normalizeProviderError", () => {
+  it("never marks provider text as safe to display", () => {
+    const error = normalizeProviderError(providerError(500, "Internal error at upstream node xyz"));
+    expect(error.safeMessage).toBeUndefined();
+    expect(error.code).toBe("provider_error");
+  });
+
   it("maps rate limiting to a retryable rate_limit error", () => {
     const error = normalizeProviderError(providerError(429, "Resource exhausted"));
     expect(error.code).toBe("rate_limit");

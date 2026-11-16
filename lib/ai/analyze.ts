@@ -4,6 +4,7 @@ import { getDimension } from "@/config/evaluation-rubric";
 import { getAiStatus } from "@/lib/ai/client";
 import { heuristicEvaluate } from "@/lib/ai/analyzer/heuristic";
 import { callStructured } from "@/lib/ai/provider";
+import type { AiRequestContext } from "@/lib/ai/providers/config";
 import { evaluationResponseSchema, hasAllDimensions } from "@/lib/ai/schemas";
 import { buildAnalysisInstruction, buildAnalysisPrompt } from "@/lib/ai/prompts";
 import { calculateOverallScore, fingerprintPrompt } from "@/lib/scoring/calculate-score";
@@ -19,7 +20,7 @@ export type AnalyzeInput = {
 
 export async function analyzePrompt(
   { prompt, title, category, rubricVersion }: AnalyzeInput,
-  browserApiKey?: string,
+  browserApiKey?: string | AiRequestContext,
 ): Promise<EvaluationSnapshot> {
   const status = getAiStatus(browserApiKey);
 
@@ -41,6 +42,8 @@ export async function analyzePrompt(
       temperature: 0.2,
       maxOutputTokens: 4096,
       label: "analyze",
+      task: "analyze",
+      complexity: "medium",
       validate: (payload) => {
         if (!hasAllDimensions(payload)) {
           return "dimensions must include all eight keys exactly once";

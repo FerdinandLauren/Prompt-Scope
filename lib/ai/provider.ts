@@ -1,16 +1,10 @@
 import "server-only";
 import { ThinkingLevel } from "@google/genai";
-import { AiError, normalizeProviderError } from "@/lib/ai/errors";
-import { getFallbackModelId, getModelId, getProvider } from "@/lib/ai/client";
-import { toGeminiJsonSchema } from "@/lib/ai/schemas";
 import type { z } from "zod";
-
-/**
- * Gemini 3.x models think before answering and a structured, multi-thousand
- * token response can take a while on a cold call. This budget only stops a
- * request that never settles.
- */
-const REQUEST_TIMEOUT_MS = 90_000;
+import type { AiTask, ProviderId, TaskComplexity } from "@/types/ai";
+import type { AiRequestContext } from "@/lib/ai/providers/config";
+import { contextFromBrowserKey } from "@/lib/ai/providers/config";
+import { executeStructured } from "@/lib/ai/router";
 
 export type StructuredRequest<T> = {
   systemInstruction: string;
@@ -19,6 +13,10 @@ export type StructuredRequest<T> = {
   temperature: number;
   maxOutputTokens: number;
   label: string;
+  /** Routing task. Defaults to the operation encoded in `label`. */
+  task?: AiTask;
+  /** Routing complexity. Defaults to a conservative estimate from the budget. */
+  complexity?: TaskComplexity;
   /**
    * Gemini 3 models think at medium level by default. Thinking tokens count
    * against `maxOutputTokens`, so the default is lowered to keep structured
@@ -32,168 +30,53 @@ export type StructuredResult<T> = {
   data: T;
   model: string;
   text: string;
+  provider: ProviderId;
 };
 
-function extractJson(text: string): unknown {
-  const trimmed = text.trim();
-
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-  try {
-    return JSON.parse(candidate);
-  } catch {
-    const firstBrace = candidate.indexOf("{");
-    const lastBrace = candidate.lastIndexOf("}");
-    if (firstBrace >= 0 && lastBrace > firstBrace) {
-      return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
-    }
-    throw new AiError("invalid_response", "The provider response was not valid JSON.", {
-      retryable: false,
-    });
-  }
+function normalizeContext(source?: string | AiRequestContext): AiRequestContext {
+  if (!source) return contextFromBrowserKey();
+  return typeof source === "string" ? contextFromBrowserKey(source) : source;
 }
+
+function taskFromLabel(label: string): AiTask {
+  if (label === "discover" || label === "generate" || label === "analyze" || label === "improve") {
+    return label;
+  }
+  return "verify";
+}
+
 /**
- * One structured call to Gemini, with a single controlled recovery retry when
- * the returned JSON does not satisfy the schema. Missing values are never
- * invented: an unrepairable response becomes an explicit error.
+ * One structured call through the multi-provider engine. The same request,
+ * schema and validation run on every provider; the router decides which
+ * provider and model to try and which failures are eligible for a fallback.
  */
-export async function callStructured<T>({
-  systemInstruction,
-  userPrompt,
-  schema,
-  temperature,
-  maxOutputTokens,
-  label,
-  thinkingLevel = ThinkingLevel.LOW,
-  validate,
-}: StructuredRequest<T>, browserApiKey?: string): Promise<StructuredResult<T>> {
-  const ai = getProvider(browserApiKey);
-  const primaryModel = getModelId();
-  const responseJsonSchema = toGeminiJsonSchema(schema);
+export async function callStructured<T>(
+  request: StructuredRequest<T>,
+  source?: string | AiRequestContext,
+): Promise<StructuredResult<T>> {
+  const context = normalizeContext(source);
+  const task = request.task ?? taskFromLabel(request.label);
+  const complexity =
+    request.complexity ?? (request.maxOutputTokens >= 6_000 ? "high" : "medium");
 
-  const attempt = async (
-    model: string,
-    prompt: string,
-    isRetry: boolean,
-  ): Promise<StructuredResult<T>> => {
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        config: {
-          systemInstruction,
-          temperature,
-          maxOutputTokens,
-          thinkingConfig: { thinkingLevel },
-          responseMimeType: "application/json",
-          responseJsonSchema,
-        },
-      }),
-      REQUEST_TIMEOUT_MS,
-    );
-
-    const text = response.text;
-    if (!text || !text.trim()) {
-      throw new AiError("invalid_response", `${label}: the provider returned an empty response.`);
-    }
-
-    const parsed = (() => {
-      try {
-        return { ok: true as const, value: schema.safeParse(extractJson(text)) };
-      } catch {
-        // Unparseable output is treated as a validation failure so the single
-        // controlled recovery attempt still applies.
-        return { ok: false as const, value: null };
-      }
-    })();
-
-    if (!parsed.ok) {
-      if (!isRetry) {
-        return attempt(
-          model,
-          `${prompt}
-
-Your previous response was not valid JSON. Return only the complete JSON object that matches the schema, with no commentary and no code fences.`,
-          true,
-        );
-      }
-      throw new AiError("invalid_response", `${label}: the provider response was not valid JSON.`, {
-        retryable: false,
-      });
-    }
-
-    const validation = parsed.value!;
-    const customIssue = validation.success ? validate?.(validation.data) ?? null : null;
-
-    if (!validation.success || customIssue) {
-      if (!isRetry) {
-        const issues = validation.success
-          ? customIssue
-          : validation.error.issues
-              .slice(0, 6)
-              .map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`)
-              .join("; ");
-
-        return attempt(
-          model,
-          `${prompt}
-
-Your previous response did not satisfy the required structure. Correct these problems and return the complete JSON object again:
-${issues}`,
-          true,
-        );
-      }
-
-      throw new AiError(
-        "invalid_response",
-        `${label}: the provider response could not be validated.`,
-        { retryable: false },
-      );
-    }
-
-    return { data: validation.data, model, text };
-  };
-
-  const secrets = [browserApiKey, process.env.GEMINI_API_KEY];
-
-  try {
-    return await attempt(primaryModel, userPrompt, false);
-  } catch (error) {
-    const normalized = normalizeProviderError(error, secrets);
-    const fallbackModel = getFallbackModelId();
-
-    // A busy model is temporary and says nothing about the request. Try the
-    // configured fallback once instead of making the user resubmit.
-    if (
-      normalized.code === "provider_overloaded" &&
-      fallbackModel &&
-      fallbackModel !== primaryModel
-    ) {
-      try {
-        return await attempt(fallbackModel, userPrompt, false);
-      } catch (fallbackError) {
-        throw normalizeProviderError(fallbackError, secrets);
-      }
-    }
-
-    throw normalized;
-  }
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new AiError("timeout", "The provider request timed out.")),
-          timeoutMs,
-        );
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  return executeStructured(
+    {
+      systemInstruction: request.systemInstruction,
+      userPrompt: request.userPrompt,
+      schema: request.schema,
+      temperature: request.temperature,
+      maxOutputTokens: request.maxOutputTokens,
+      label: request.label,
+      task,
+      complexity,
+      thinkingLevel:
+        request.thinkingLevel === ThinkingLevel.HIGH
+          ? "HIGH"
+          : request.thinkingLevel === ThinkingLevel.LOW
+            ? "LOW"
+            : "LOW",
+      validate: request.validate,
+    },
+    context,
+  );
 }

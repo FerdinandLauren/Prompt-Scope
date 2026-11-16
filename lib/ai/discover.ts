@@ -4,6 +4,7 @@ import { getAiStatus } from "@/lib/ai/client";
 import { demoDiscover } from "@/lib/ai/demo/discover";
 import { buildDiscoveryInstruction, buildDiscoveryPrompt } from "@/lib/ai/prompts";
 import { callStructured } from "@/lib/ai/provider";
+import type { AiRequestContext } from "@/lib/ai/providers/config";
 import { discoveryResponseSchema, type DiscoveryResponse } from "@/lib/ai/schemas";
 import type {
   BriefSection,
@@ -94,7 +95,7 @@ function recommendationFor(
  */
 export async function discoverStep(
   input: DiscoveryInput,
-  browserApiKey?: string,
+  browserApiKey?: string | AiRequestContext,
 ): Promise<DiscoveryTurn> {
   const status = getAiStatus(browserApiKey);
 
@@ -113,6 +114,8 @@ export async function discoverStep(
       temperature: 0.4,
       maxOutputTokens: 4_096,
       label: "discover",
+      task: "discover",
+      complexity: "medium",
       validate: (payload) => {
         if (payload.brief.sections.length === 0) return "brief must contain at least one section";
         if (payload.categoryConfidence < 0 || payload.categoryConfidence > 100) return "invalid confidence";

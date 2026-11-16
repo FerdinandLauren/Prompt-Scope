@@ -89,8 +89,10 @@ and it forbids commit, push, deploy or destructive commands unless you explicitl
 - **Comparisons** — every saved before/after record with its radar chart and delta table.
 - **Prompt History** — a searchable library with a detail dialog for versions, evaluations and
   comparison.
-- **Settings** — appearance (system, light or dark), the Gemini key panel with verification, mode
-  details, workspace inventory, local data controls and privacy.
+- **Settings** — appearance (system, light or dark), **AI Providers & Models** (per-provider keys,
+  enable/disable, model, base URL, preferred provider, routing mode, fallback order, connectivity tests,
+  health and usage), the Gemini key panel with verification, mode details, workspace inventory, local
+  data controls and privacy.
 - **Documentation** — the guided workflow, the domain rubric table, score bands, scoring rules and the
   routes.
 
@@ -106,7 +108,7 @@ is remembered per browser.
 | Language | TypeScript (strict) |
 | Styling | Tailwind CSS 4 with CSS custom-property tokens |
 | Charts | Recharts (radar) |
-| AI | `@google/genai` — official Google Gen AI SDK |
+| AI | `@google/genai` for Gemini, plus an OpenAI-compatible HTTP adapter for Vikey (verified) and Dattio (opt-in, unverified) |
 | Validation | Zod (request bodies, AI responses, shared with the client form) |
 | Testing | Vitest, plus Puppeteer harnesses for the guided flow, keyboard, motion and screenshots |
 | Storage | Browser `localStorage` / `sessionStorage` |
@@ -115,11 +117,17 @@ A full walkthrough is in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ## Live AI Mode, Demo Mode and Draft fallback
 
-- **Live AI Mode** activates when a usable Gemini key is available. Discovery, generation, analysis and
-  improvement are sent to Google Gemini through server-side route handlers with schema-constrained JSON
-  output. The key comes from `GEMINI_API_KEY` by default; you can also paste one in **Settings** for local
-  use.
-- **Demo Mode** activates when no key is configured. Discovery and generation are produced locally by a
+- **Live AI Mode** activates when at least one provider key is usable. Discovery, generation, analysis
+  and improvement go through server-side route handlers to **Gemini**, **Vikey**, or an **OpenAI-compatible
+  Dattio** endpoint you configure. Keys come from the environment by default; you can also save a key per
+  provider in **Settings**.
+- **Routing** is chosen in Settings:
+  - **Manual** — a single configured provider and model.
+  - **Automatic** — the best available provider for the task; it does not switch mid-task.
+  - **Automatic with fallback** (default) — switches provider on a rate limit, provider error, overload,
+    timeout or network failure, while keeping the same prompt, system instruction and validation.
+    Rejected keys, bad requests, unknown models and invalid output are reported instead of retried.
+- **Demo Mode** activates when no provider is usable. Discovery and generation are produced locally by a
   deterministic engine; analysis is scored by a deterministic rule engine that inspects the text for real
   signals — audience, measurable values, named components, type roles, constraints, contradictions. Every
   result is labelled **DEMO DATA** or **Demo discovery**, and no request leaves the server.
@@ -151,7 +159,7 @@ flow, the sample ideas, the analyzer, the improver, the radar comparison and his
 | `npm run start` | Serve the production build |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite (256 tests) |
+| `npm test` | Vitest suite (293 tests) |
 | `npm run check` | Typecheck + lint + tests |
 
 The browser QA harnesses need a running app and Chrome:
@@ -164,9 +172,28 @@ node scripts/qa-guided-live.mjs    # Live Mode discovery/generation API + guided
 ### Environment variables
 
 ```env
+# Gemini (preserved from the original integration)
 GEMINI_API_KEY=        # from https://aistudio.google.com/apikey — leave empty for Demo Mode
 GEMINI_MODEL=gemini-3.6-flash
 GEMINI_FALLBACK_MODEL=gemini-4-hydrogen
+
+# Vikey — verified OpenAI-compatible provider
+VIKEY_API_KEY=
+VIKEY_BASE_URL=https://api.vikey.ai/v1
+VIKEY_MODEL=vikey/agent-gpt
+
+# Dattio — unverified; supply your own base URL and model
+DATTIO_API_KEY=
+DATTIO_BASE_URL=
+DATTIO_MODEL=
+
+# Routing (Settings overrides these)
+AI_ROUTING_MODE=auto_fallback
+AI_PROVIDER_ORDER=gemini,vikey,dattio
+AI_PREFERRED_PROVIDER=auto
+AI_FALLBACK_ENABLED=true
+
+# In-process limiter
 AI_RATE_LIMIT_MAX=12
 AI_RATE_LIMIT_WINDOW_MS=60000
 ```
@@ -176,16 +203,20 @@ AI_RATE_LIMIT_WINDOW_MS=60000
 
 ### Using a key from the interface
 
-Open **Settings → Gemini API key** and paste a key, then choose **Verify and use**. The verify step
-calls Gemini once; the key is kept only if the call succeeds. It is stored in `sessionStorage` by
-default, so it disappears when the session ends. Ticking **Remember this key on this device** moves it
-to `localStorage` and shows the trade-off before saving. **Clear key** removes both copies and the
-server environment configuration takes over again.
+Open **Settings → AI Providers & Models** and save a key per provider, choose a model, optionally set a
+base URL (Dattio and self-hosted gateways), then use **Test connection**. Keys default to
+`sessionStorage`, so they disappear when the session ends. Ticking **Remember this key on this device**
+moves that provider's key to `localStorage` after showing the trade-off. **Clear key** removes both
+copies and the server environment configuration takes over again.
 
-The key travels only in the `x-promptscope-api-key` header to this application's own `/api/ai/*`
-routes. It is used for that request, never replaces the process-wide provider, and is redacted from
-error detail. The environment variable remains the recommended production configuration because it
-never reaches the browser at all.
+The legacy **Settings → Gemini API key** panel still works and operates on the same Gemini storage, so an
+existing saved key keeps working without re-entry.
+
+Keys travel only to this application's own `/api/ai/*` routes — Gemini in `x-promptscope-api-key`, other
+providers in `x-promptscope-provider-keys` — and non-secret preferences in `x-promptscope-ai-config`.
+They are used for that request, never replace the process-wide configuration, and are redacted from error
+detail. The environment variable remains the recommended production configuration because it never reaches
+the browser at all.
 
 ## The eight dimensions
 
@@ -217,8 +248,10 @@ rubric rewards evidence, coverage and specificity, not word count.
 | `POST /api/ai/generate` | Compose a prompt from a configuration (with optional `depth`, `targetAgent`, `brief`). |
 | `POST /api/ai/analyze` | Score a prompt against the domain-aware rubric. |
 | `POST /api/ai/improve` | Revise a prompt while preserving intent, constraints and unknowns. |
-| `GET /api/ai/status` | Active mode, model and key source. |
-| `POST /api/ai/verify` | Validate a key before it is saved. |
+| `GET /api/ai/status` | Active mode, provider, model, key sources, per-provider health and routing. |
+| `POST /api/ai/verify` | Validate a provider's key and model before it is saved (defaults to Gemini). |
+| `POST /api/ai/models` | Models reported by a provider, with documented ids as fallback. |
+| `GET /api/ai/usage` | In-process request, failure, latency and reported-token totals. |
 
 Every request body is validated with Zod, capped at 40,000 characters of prompt text, and limited to
 12 requests per minute per client by default.
@@ -230,13 +263,14 @@ app/                    routes and /api/ai route handlers
 components/builder/     guided builder, advanced builder, prompt workspace, shared tabs
 components/             layout, ui primitives, analyzer, improvement, visualization, history, comparison, settings
 config/                 domains (categories, rubrics, depths, agents, sections, seeds), app, rubric, presets, samples
-lib/ai/                 provider client, discovery, structured calls, instructions, schemas, errors, throttle, demo engine
+lib/ai/                 router, provider adapters, structured calls, health/usage, discovery, schemas, errors, throttle, demo engine
+lib/ai/providers/       config resolution, provider metadata, Gemini and OpenAI-compatible adapters
 lib/prompt/             local draft composer (depth + agent aware)
-lib/security/           browser key header, validation and masking
+lib/security/           browser key and provider-key headers, validation and masking
 lib/settings/           copy describing the active key source
 lib/theme/              theme preference storage, resolution, pre-paint script
 lib/scoring/            overall score, comparison maths, prompt fingerprint
-lib/storage/            localStorage adapters (sessions, comparisons, handoff, builder draft, browser key)
+lib/storage/            localStorage adapters (sessions, comparisons, handoff, builder draft, keys, AI preferences)
 lib/validation/         shared Zod schemas
 hooks/                  local-data, status, key, theme and builder-draft hooks
 tests/                  vitest suites
@@ -250,10 +284,11 @@ docs all read from it.
 
 ## Quality
 
-- **256 tests** across config/domain integrity, discovery behaviour, draft composition by depth and
+- **293 tests** across config/domain integrity, discovery behaviour, draft composition by depth and
   agent, builder-draft persistence, scoring, comparison maths, request validation, the analyzer engine,
   evidence honesty, the live provider path, request-scoped keys, connection verification, error
-  mapping, schemas, throttling, storage, settings and theme tokens.
+  mapping, schemas, throttling, storage, settings, theme tokens, the OpenAI-compatible adapter,
+  multi-provider routing, provider health/usage and provider-key storage.
 - **Theme contrast is tested, not eyeballed:** both palettes must clear WCAG AA (7:1 for body text,
   4.5:1 for metadata and status pairs) or the suite fails.
 - **Lighthouse 100** for accessibility and best practices on the audited routes, including the
@@ -275,12 +310,14 @@ docs all read from it.
   bundle.
 - A key entered in Settings stays in the browser, is sent only to this application's own AI routes,
   and is used for that request alone. It is never logged, stored on the server, or committed.
+- Keys are stored per provider; Gemini keeps the original storage key, so an existing saved key remains
+  valid. Server environment keys are preferred in production and never reach the browser.
 - Route handlers validate every request body, cap its size, and apply a per-client rate limit.
 - The server never trusts a score sent from the browser or a total sent by a model.
 - Provider failures are logged server-side with raw detail redacted, while the browser receives a safe
   message and a code.
-- In Live mode prompt text is transmitted to Google Gemini for processing; do not submit confidential
-  business information or personal data. Demo Mode transmits nothing.
+- In Live mode prompt text is transmitted to the provider that serves the request, under that provider's
+  terms; do not submit confidential business information or personal data. Demo Mode transmits nothing.
 - Scores are model-assisted diagnostics, not a universal measurement of prompt quality.
 
 ## Known limitations
@@ -297,6 +334,11 @@ docs all read from it.
 - History, versions, builder drafts and comparisons live in one browser profile; there is no cloud sync.
 - Live availability depends on the provider, your quota and the configured model. Live calls can take
   30–90 seconds and can fail; the UI falls back with an explicit label.
+- Provider health and usage are per server process and reset on restart. Tokens are shown only when a
+  provider reports them; they are not estimated.
+- Vikey was implemented against its published documentation but has not been exercised with a real key
+  here. Dattio publishes no verifiable API documentation, so it is opt-in, unverified, and requires a
+  base URL and model from your account.
 - Prompt text sent to the analyzer is capped at 40,000 characters.
 
 ## Roadmap

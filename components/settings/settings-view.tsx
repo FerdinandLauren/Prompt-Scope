@@ -10,6 +10,7 @@ import { Notice } from "@/components/ui/notice";
 import { useToast } from "@/components/ui/toast";
 import { ModeBadge } from "@/components/system/mode-badge";
 import { BrowserKeyPanel } from "@/components/settings/browser-key-panel";
+import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
 import { ThemeSegmentedControl } from "@/components/theme/theme-toggle";
 import { useAiStatus } from "@/hooks/use-ai-status";
 import { useSessions } from "@/hooks/use-sessions";
@@ -51,7 +52,7 @@ export function SettingsView() {
       <WorkspaceHeader
         title="Settings"
         section="System"
-        description="Analysis mode, API key, appearance, workspace inventory, local data controls, and the privacy terms of this application."
+        description="AI providers and routing, analysis mode, appearance, workspace inventory, local data controls, and the privacy terms of this application."
         meta={<ModeBadge showModel />}
       />
 
@@ -71,6 +72,11 @@ export function SettingsView() {
       <section className="pb-7">
         <h2 className="mono-label mb-3">API key</h2>
         <BrowserKeyPanel />
+      </section>
+
+      <section className="pb-7">
+        <h2 className="mono-label mb-3">AI Providers &amp; Models</h2>
+        <AiProvidersPanel />
       </section>
 
       <section className="py-2">
@@ -106,11 +112,13 @@ export function SettingsView() {
           </div>
           <div className="border-t border-line-soft px-4 py-4">
             <p className="max-w-[86ch] text-[12px] leading-[1.65] text-ink-2">
-              Live mode sends your idea, prompt, or revision to Google Gemini through a server-side route. Whichever key
-              is active — the server environment variable or the browser key you saved above — it is read only on the
-              server for that request. Demo Mode evaluates prompts locally with a deterministic rule engine and labels
-              every result as demo data. The rubric adapts to the selected category: the eight axis keys stay stable, but
-              their labels, descriptions, and scoring guidance change with the domain.
+              Live mode sends your idea, prompt, or revision to the configured AI provider through a server-side route.
+              Whichever key is active — a server environment variable or a key you saved above — it is read only on the
+              server for that request and is never returned to the browser. Automatic routing picks a provider per task;
+              Automatic with fallback can switch providers on rate limits, provider errors, timeouts, and network
+              failures. Demo Mode evaluates prompts locally with a deterministic rule engine and labels every result as
+              demo data. The rubric adapts to the selected category: the eight axis keys stay stable, but their labels,
+              descriptions, and scoring guidance change with the domain.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
@@ -184,7 +192,7 @@ export function SettingsView() {
         <h2 className="mono-label mb-3">Privacy</h2>
         <ul className="divide-y divide-line-soft border-y border-line-soft">
           {[
-            "In Live mode, prompt text is transmitted to Google Gemini for processing under Google's terms.",
+            "In Live mode, prompt text is transmitted to the AI provider that serves the request, under that provider's terms.",
             "Do not submit confidential business information, personal data, or credentials in a prompt.",
             "Demo Mode does not transmit prompt text to any provider.",
             "Scores are model-assisted diagnostics, not a scientific measurement of prompt quality.",

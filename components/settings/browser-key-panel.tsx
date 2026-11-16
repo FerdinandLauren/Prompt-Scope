@@ -11,6 +11,7 @@ import { useAiStatus } from "@/hooks/use-ai-status";
 import { describeKeySource } from "@/lib/settings/key-source";
 import { postJson } from "@/lib/api/client";
 import { isUsableApiKey } from "@/lib/security/browser-api-key";
+import type { AiStatus } from "@/types/settings";
 import { cn } from "@/lib/utils";
 
 type VerifyResponse = {
@@ -20,6 +21,30 @@ type VerifyResponse = {
   busy?: boolean;
 };
 
+/**
+ * The legacy panel is about the Gemini key specifically, so it reads Gemini's
+ * own provider summary instead of the globally active provider.
+ */
+function geminiSummary(status: AiStatus) {
+  return status.providers?.find((provider) => provider.id === "gemini");
+}
+
+function geminiSource(status: AiStatus): AiStatus["source"] {
+  return geminiSummary(status)?.keySource ?? status.source;
+}
+
+function geminiStatus(status: AiStatus): AiStatus {
+  const gemini = geminiSummary(status);
+  if (!gemini) return status;
+  return {
+    ...status,
+    mode: gemini.configured ? "live" : "demo",
+    model: gemini.model,
+    configured: gemini.configured,
+    source: gemini.keySource,
+  };
+}
+
 /** Provider-side problems that say nothing about whether the key is valid. */
 const KEEP_KEY_ERROR_CODES = new Set([
   "timeout",
@@ -28,6 +53,7 @@ const KEEP_KEY_ERROR_CODES = new Set([
   "provider_error",
   "throttled",
   "quota_exceeded",
+  "insufficient_balance",
 ]);
 
 export function BrowserKeyPanel() {
@@ -44,7 +70,8 @@ export function BrowserKeyPanel() {
   const [verifiedSlow, setVerifiedSlow] = useState(false);
   const [verifiedBusy, setVerifiedBusy] = useState(false);
 
-  const described = describeKeySource(status);
+  const described = describeKeySource(geminiStatus(status));
+  const geminiSourceValue = geminiSource(status);
   const draftLooksUsable = isUsableApiKey(draft.trim());
 
   async function verifyAndSave() {
@@ -70,7 +97,7 @@ export function BrowserKeyPanel() {
       return;
     }
 
-    const result = await postJson<VerifyResponse>("/api/ai/verify", {});
+    const result = await postJson<VerifyResponse>("/api/ai/verify", { provider: "gemini" });
     setVerifying(false);
 
     if (!result.ok) {
@@ -109,7 +136,7 @@ export function BrowserKeyPanel() {
     setVerifiedSlow(false);
     setVerifiedBusy(false);
 
-    const result = await postJson<VerifyResponse>("/api/ai/verify", {});
+    const result = await postJson<VerifyResponse>("/api/ai/verify", { provider: "gemini" });
     setVerifying(false);
 
     if (!result.ok) {
@@ -129,11 +156,11 @@ export function BrowserKeyPanel() {
           <h3 className="text-[12.5px] font-medium text-ink">Gemini API key</h3>
         </div>
         <Badge tone={described.tone === "browser" ? "medium" : described.tone}>
-          {status.source === "browser"
+          {geminiSourceValue === "browser"
             ? remembered
               ? "Browser key · remembered"
               : "Browser key · this session"
-            : status.source === "environment"
+            : geminiSourceValue === "environment"
               ? "Server key"
               : "No key"}
         </Badge>

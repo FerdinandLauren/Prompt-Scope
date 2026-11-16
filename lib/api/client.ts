@@ -1,5 +1,11 @@
 import { getBrowserApiKey } from "@/lib/storage/browser-api-key";
-import { BROWSER_API_KEY_HEADER } from "@/lib/security/browser-api-key";
+import {
+  AI_CONFIG_HEADER,
+  BROWSER_API_KEY_HEADER,
+  PROVIDER_KEYS_HEADER,
+} from "@/lib/security/browser-api-key";
+import { getAdditionalProviderKeys } from "@/lib/storage/provider-api-key";
+import { aiConfigHeaderValue } from "@/lib/storage/ai-providers";
 
 export type ApiError = {
   code: string;
@@ -22,6 +28,15 @@ export function aiRequestHeaders(
 
   const key = getBrowserApiKey();
   if (key) headers[BROWSER_API_KEY_HEADER] = key;
+
+  const additionalKeys = getAdditionalProviderKeys();
+  if (Object.keys(additionalKeys).length > 0) {
+    headers[PROVIDER_KEYS_HEADER] = JSON.stringify(additionalKeys);
+  }
+
+  const config = aiConfigHeaderValue();
+  if (config) headers[AI_CONFIG_HEADER] = config;
+
   return headers;
 }
 

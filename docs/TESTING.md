@@ -5,7 +5,7 @@ Verified 16 November 2026. Every number below came from a command that was actua
 ## 1. Automated tests
 
 ```bash
-npm test        # vitest, 256 tests, 22 files
+npm test        # vitest, 293 tests, 26 files
 npm run typecheck
 npm run lint
 npm run build
@@ -23,7 +23,7 @@ npm run build
 | Analyzer engine | `tests/ai/heuristic-analyzer.test.ts` | 13 | All eight dimensions return integers in range; overall score matches the shared formula; evaluation is deterministic; ordering holds (vague < average < structured); brevity is penalised; repeated signal words cannot reach a perfect score. |
 | Evidence honesty | `tests/ai/evidence.test.ts` | 4 | A well-specified prompt yields no fabricated weakness; quoted evidence is verbatim from the prompt; no evidence is attached when the prompt contains no vague wording; a "detected but thin" dimension never claims the signal is missing. |
 | Live provider | `tests/ai/live-provider.test.ts` | 15 | Live mode is detected without exposing the key; the request uses structured JSON with a schema and the rubric; the server computes the overall score even when the model returns its own; a malformed response triggers exactly one retry with corrective feedback; an empty response, a 429, a rejected key and a missing model each map to a distinct, non-leaking error. |
-| Provider errors | `tests/ai/errors.test.ts` | 10 | Mapping for 429 / quota / 401 / 403 / 400 / 404 / 5xx / timeout / network; retryability is derived correctly; user-facing messages never contain provider text. |
+| Provider errors | `tests/ai/errors.test.ts` | 11 | Mapping for 429 / quota / 401 / 403 / 400 / 404 / 5xx / timeout / network; retryability is derived correctly; user-facing messages never contain provider text; normalised provider errors are never marked safe to display verbatim. |
 | Provider schemas | `tests/ai/schemas.test.ts` | 11 | Structural validation of AI output; duplicate or missing dimensions are rejected; unsupported JSON-Schema keywords are stripped before the request while enums and required fields survive. |
 | Rate limiting | `tests/ai/throttle.test.ts` | 7 | Requests are allowed up to the ceiling, then blocked with a retryable `throttled` error; buckets are per client; the window resets; a nonsense env value falls back to the safe default. |
 | Demo improver | `tests/ai/demo-improve.test.ts` | 11 | The original text is preserved verbatim; missing facts become confirmation questions, never inventions; the change list covers the dimensions it touched; the revision scores higher on clarity *and* still reports remaining weaknesses. |
@@ -31,17 +31,25 @@ npm run build
 | Comparison storage | `tests/storage/comparison-storage.test.ts` | 8 | Newest-first ordering, id replacement, deletion, corrupted JSON tolerance, and a stable snapshot reference (so React's `useSyncExternalStore` cannot loop). |
 | Browser key contract | `tests/security/browser-api-key.test.ts` | 9 | Header name is single-sourced; blank, placeholder and oversized values are rejected; the mask never returns the full key. |
 | Request-scoped keys | `tests/ai/browser-key-provider.test.ts` | 10 | A browser key wins for its own request while the environment client stays cached; the status payload never contains either key; provider errors redact the key; a full analyze call passes it through. |
-| Connection verification | `tests/ai/verify-connection.test.ts` | 8 | The verify path reports model and source only, fails cleanly with no key, distinguishes a rejected key from an unavailable model, keeps the key when only the test generation is slow, and never echoes the key. |
+| Connection verification | `tests/ai/verify-connection.test.ts` | 9 | The verify path reports model and source only, fails cleanly with no key, names the provider that is missing a key, distinguishes a rejected key from an unavailable model, keeps the key when only the test generation is slow, and never echoes the key. |
 | Key and theme preferences | `tests/ui/settings-preferences.test.ts` | 12 | Session storage is the default; the device copy appears only after opt-in; clear removes both; theme falls back to `system`, rejects invalid values, and the pre-paint script matches the storage key. |
 | Settings integration | `tests/ui/browser-key-settings.test.ts` | 6 | The key header is attached to `/api/ai/*` only, never third-party URLs; extra headers are preserved; source copy distinguishes server, browser and demo. |
 | Theme tokens | `tests/ui/theme-tokens.test.ts` | 16 | Both blocks define every semantic token; light is genuinely light; foreground/background pairs clear WCAG AA in both themes. |
+| OpenAI-compatible adapter | `tests/ai/openai-compatible.test.ts` | 9 | Bearer auth and chat/completions shape; structured JSON returned with token usage; one repair retry on invalid JSON; 429 + Retry-After maps to a retryable redacted error; a gateway that rejects `response_format` is retried without it; model listing filters malformed entries; verify calls models then a tiny generation; a missing base URL fails before the network; SSE deltas are parsed defensively. |
+| Multi-provider routing | `tests/ai/router.test.ts` | 9 | A transient failure switches provider while preserving the system instruction and prompt verbatim; a rejected key never falls back; `auto` never switches; `manual` honours its provider with fallback off and switches only when enabled; the busy Gemini model still retries its fallback model; an over-budget Retry-After is not waited on; missing keys report `missing_api_key`; a configured-but-unusable provider reports `unsupported_capability`. |
+| Health and usage | `tests/ai/health-usage.test.ts` | 9 | Untested versus connected; disabled and not-configured states; success rate and average latency; recovery after a later success; rejected key → connection failure; rate-limit cooldown expiry; usage records reported tokens and marks absent usage unavailable; providers are kept separate; the ledger is bounded at 200 records and 12 recent entries. |
+| Provider settings | `tests/ui/ai-provider-settings.test.ts` | 8 | Per-provider keys default to session storage and move only on opt-in; Gemini delegates to the legacy key; placeholders are rejected and clear removes both copies; keys and non-secret config attach only to own `/api/ai/*` URLs; the config header stays absent while everything is default; base URLs require https or localhost; unknown providers/routing values are dropped while valid siblings survive; fallback order is deduplicated. |
 
-**Result:** 256 passed / 256. TypeScript: no errors. ESLint: no errors or warnings. Production build: clean, including `/api/ai/discover`.
+**Result:** 293 passed / 293. TypeScript: no errors. ESLint: no errors or warnings. Production build: clean,
+including `/api/ai/discover`, `/api/ai/models` and `/api/ai/usage`.
 
-Two defects were found by these tests and fixed rather than worked around:
+Three defects were found by these tests and fixed rather than worked around:
 
 1. A non-JSON model response threw before the recovery retry could run.
-2. Raw provider text was retained in the thrown error message; it is now kept in a separate `detail` field used only for server logs.
+2. Raw provider text was retained in the thrown error message; it is now kept in a separate `detail`
+   field used only for server logs.
+3. Provider health compared timestamps, so a failure recorded in the same millisecond as an earlier
+   success was reported as `connected`. Ordering is now tracked explicitly.
 
 During the guided work the discovery tests also caught an unknown answer being replaced by a generic
 "Not decided yet" once the interview advanced; the seed recommendation now persists, and uncertainty
@@ -146,8 +154,9 @@ It now uses `text-ink`, and the re-run reports 0 violations across 14 route/them
 | No secrets tracked | `git ls-files \| grep -i env` | Only `.env.example` |
 | Env file ignored | `git check-ignore -v .env.local` | Matched by `.gitignore` |
 | No key-shaped strings committed | `git grep -E "AIza[0-9A-Za-z_-]{10,}"` and `git grep -E "AQ\.[0-9A-Za-z._-]{10,}"` | No matches |
-| Provider errors do not leak | `tests/ai/errors.test.ts`, `tests/ai/live-provider.test.ts`, `tests/ai/browser-key-provider.test.ts` | Raw provider text lives in `detail` for server logs; the request key and Google key shapes are replaced with `***`; the browser receives `userMessageForCode[code]` |
+| Provider errors do not leak | `tests/ai/errors.test.ts`, `tests/ai/openai-compatible.test.ts`, `tests/ai/live-provider.test.ts`, `tests/ai/browser-key-provider.test.ts` | Raw provider text lives in `detail` for server logs; request keys and known key shapes are replaced with `***`; the browser receives `userMessageForCode[code]`, or an application-authored `safeMessage` that never contains provider text |
 | Browser key stays request-scoped | `tests/ai/browser-key-provider.test.ts` | The environment provider instance is never replaced by a browser key; status never contains the key |
+| Provider keys are scoped and masked | `tests/ui/ai-provider-settings.test.ts`, `tests/security/browser-api-key.test.ts` | Keys travel in `x-promptscope-provider-keys` only to own `/api/ai/*` URLs; snapshots expose a mask, never the key; secrets are never stored in the preference key |
 | Browser key is opt-in on disk | `tests/ui/settings-preferences.test.ts` | Session storage by default; device storage only after the user ticks remember; clear removes both |
 | Input is validated server-side | `tests/validation/schemas.test.ts`, live endpoint checks | `400` with field errors for a short prompt; `413`-class body limit; browser-supplied scores are discarded |
 
@@ -155,7 +164,9 @@ It now uses `text-ink`, and the re-run reports 0 violations across 14 route/them
 
 | Request | Observed |
 |---|---|
-| `GET /api/ai/status` | `{ mode: "demo", configured: false, source: "none", model: null }` without a key; `{ mode: "live", configured: true, source: "environment" }` with one; `source: "browser"` when the request carries a usable `x-promptscope-api-key` header |
+| `GET /api/ai/status` | `{ mode: "demo", configured: false, source: "none", model: null }` without a key; `{ mode: "live", configured: true, source: "environment", provider, routing, providers[] }` with one; `source: "browser"` when the request carries a usable key; each provider carries its own status, model and key source |
+| `POST /api/ai/models` | Models reported by the selected provider, or documented ids when the provider does not list them; a provider that cannot list models degrades to its documented set instead of failing the page |
+| `GET /api/ai/usage` | In-process request/failure/latency counters and token totals only where providers reported them; resets on restart; never includes a key |
 | `POST /api/ai/verify` | `{ model, source }` (plus `slow: true` when only the test generation timed out) when the provider answers; `missing_api_key`, `invalid_api_key` or `model_unavailable` for a configuration problem; the key is never in the response |
 | `POST /api/ai/discover` | `{ source: "demo" }` in Demo Mode with one question and a brief; `{ source: "live" }` with a real Gemini turn; provider timeout returns a labelled error so the client falls back to demo discovery |
 | `POST /api/ai/generate` | Structured prompt, `source: "demo"` in Demo Mode or `"live"` with a key; `depth` and `targetAgent` echoed back |
@@ -191,4 +202,10 @@ Ordering is monotonic and no dimension reaches 100 from repetition alone.
   and generation can take 30–90 seconds and may fail; fallbacks are labelled.
 - Prompt text sent to the analyzer is capped at 40,000 characters.
 - The rate limiter is per process; a multi-instance deployment should also rely on platform-level limits.
-- Route handlers are covered through module-level tests plus live HTTP checks rather than an automated server harness.
+- Provider health and usage are per process and reset on restart. They are an operational view, not an
+  invoice; token counts are shown only when a provider reports them.
+- Vikey was verified against its published docs but has not been exercised with a real key in this
+  environment. Dattio has no verifiable public documentation, so it is opt-in and unverified; PromptScope
+  does not guess its endpoint, model or request format.
+- Route handlers are covered through module-level tests plus live HTTP checks rather than an automated
+  server harness.

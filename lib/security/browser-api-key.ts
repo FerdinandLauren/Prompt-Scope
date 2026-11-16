@@ -1,5 +1,17 @@
 export const BROWSER_API_KEY_HEADER = "x-promptscope-api-key";
+
+/**
+ * Provider keys beyond Gemini travel in one JSON header. Each value is still a
+ * secret: it is read only by this application's own server routes and is never
+ * returned to the browser or written to a log.
+ */
+export const PROVIDER_KEYS_HEADER = "x-promptscope-provider-keys";
+/** Non-secret provider and routing preferences (models, base URLs, mode). */
+export const AI_CONFIG_HEADER = "x-promptscope-ai-config";
+
 export const MAX_BROWSER_API_KEY_LENGTH = 256;
+export const MAX_PROVIDER_KEYS_BYTES = 4_096;
+export const MAX_AI_CONFIG_BYTES = 8_192;
 
 const PLACEHOLDERS = new Set(["your_api_key", "changeme", "paste-key-here"]);
 

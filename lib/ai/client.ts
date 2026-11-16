@@ -2,18 +2,22 @@ import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import { AiError } from "@/lib/ai/errors";
 import { isUsableApiKey } from "@/lib/security/browser-api-key";
+import {
+  GEMINI_DEFAULT_FALLBACK_MODEL,
+  GEMINI_DEFAULT_MODEL,
+} from "@/lib/ai/providers/meta";
 import type { AiStatus } from "@/types/settings";
 
 export type { AiMode, AiStatus, KeySource } from "@/types/settings";
 
-export const DEFAULT_MODEL = "gemini-3.6-flash";
-export const DEFAULT_FALLBACK_MODEL = "gemini-4-hydrogen";
+export const DEFAULT_MODEL = GEMINI_DEFAULT_MODEL;
+export const DEFAULT_FALLBACK_MODEL = GEMINI_DEFAULT_FALLBACK_MODEL;
 
 /**
  * The SDK retries 429/5xx responses five times with exponential backoff by
  * default. That turns a short "model is busy" answer into a request that looks
- * like a hang, so retries are disabled and the app reports the provider's real
- * status instead.
+ * like a hang, so retries are disabled here and the router applies its own
+ * bounded policy across models and providers.
  */
 const PROVIDER_HTTP_OPTIONS = { retryOptions: { attempts: 1 } };
 
@@ -27,8 +31,8 @@ export function getModelId(): string {
 }
 
 /**
- * Used once when the primary model answers 503 (high demand). Set
- * `GEMINI_FALLBACK_MODEL=none` to disable the fallback.
+ * Used once when the primary Gemini model answers 503 (high demand). Set
+ * `GEMINI_FALLBACK_MODEL=none` to disable the model fallback.
  */
 export function getFallbackModelId(): string | undefined {
   const configured = process.env.GEMINI_FALLBACK_MODEL?.trim();
@@ -51,23 +55,13 @@ export function resolveActiveKey(browserApiKey?: string): {
   return { key: undefined, source: "none" };
 }
 
-export function getAiStatus(browserApiKey?: string): AiStatus {
-  const { key, source } = resolveActiveKey(browserApiKey);
-  return {
-    mode: key ? "live" : "demo",
-    model: key ? getModelId() : null,
-    configured: Boolean(key),
-    source,
-  };
-}
-
 let environmentClient: GoogleGenAI | null = null;
 let providerOverride: GoogleGenAI | null = null;
 
 /**
- * Returns a provider for the active key. The environment key uses one cached
- * instance; a browser key produces a request-scoped instance so a user-supplied
- * key can never become the process-wide provider.
+ * Returns a Gemini provider for the active key. The environment key uses one
+ * cached instance; a browser key produces a request-scoped instance so a
+ * user-supplied key can never become the process-wide provider.
  */
 export function getProvider(browserApiKey?: string): GoogleGenAI {
   const { key, source } = resolveActiveKey(browserApiKey);
@@ -95,3 +89,5 @@ export function __setProviderForTests(next: GoogleGenAI | null) {
   providerOverride = next;
   environmentClient = next;
 }
+
+export { getAiStatus } from "@/lib/ai/status";

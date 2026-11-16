@@ -2,7 +2,12 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getJson } from "@/lib/api/client";
-import { browserKeySnapshot, subscribeToBrowserKey } from "@/lib/storage/browser-api-key";
+import { PROVIDER_IDS } from "@/types/ai";
+import {
+  providerKeySnapshot,
+  subscribeToProviderKeys,
+} from "@/lib/storage/provider-api-key";
+import { aiConfigSnapshot, subscribeToAiConfig } from "@/lib/storage/ai-providers";
 import type { AiStatus } from "@/types/settings";
 
 const FALLBACK: AiStatus = { mode: "demo", model: null, configured: false, source: "none" };
@@ -19,13 +24,22 @@ function loadStatus(): Promise<AiStatus> {
   return statusPromise;
 }
 
-function browserKeySignature() {
-  const snapshot = browserKeySnapshot();
-  return `${snapshot.hasKey ? "key" : "none"}:${snapshot.remembered ? "remembered" : "session"}`;
+/** Covered by `subscribeToProviderKeys`, including the legacy Gemini key. */
+function providerSignature() {
+  return PROVIDER_IDS.map((provider) => {
+    const snapshot = providerKeySnapshot(provider);
+    return `${provider}:${snapshot.hasKey ? "key" : "none"}:${snapshot.remembered ? "remembered" : "session"}`;
+  }).join("|");
+}
+
+function configSignature() {
+  return JSON.stringify(aiConfigSnapshot());
 }
 
 export function useAiStatus() {
-  const keySignature = useSyncExternalStore(subscribeToBrowserKey, browserKeySignature, () => "none");
+  const keySignature = useSyncExternalStore(subscribeToProviderKeys, providerSignature, () => "none");
+  const routingSignature = useSyncExternalStore(subscribeToAiConfig, configSignature, () => "none");
+  const [nonce, setNonce] = useState(0);
   const [status, setStatus] = useState<AiStatus | null>(null);
 
   useEffect(() => {
@@ -37,9 +51,14 @@ export function useAiStatus() {
     return () => {
       active = false;
     };
-  }, [keySignature]);
+  }, [keySignature, routingSignature, nonce]);
 
-  return { status: status ?? FALLBACK, loading: status === null };
+  /** Re-reads status after an action that changes health but not configuration. */
+  function refresh() {
+    setNonce((current) => current + 1);
+  }
+
+  return { status: status ?? FALLBACK, loading: status === null, refresh };
 }
 
 /** Clears the shared cache so the next read reflects a changed configuration. */

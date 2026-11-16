@@ -11,8 +11,9 @@ Next.js route handlers  app/api/ai/*        ← request schema validation, rate 
   ▼
 AI provider layer       lib/ai/*            ← instruction building, provider call, response validation
   │                                          discovery orchestration (live → demo fallback)
-  ├── live  → @google/genai → Gemini → structured JSON (schema-constrained)
-  └── demo  → lib/ai/demo/{discover,improve}, lib/ai/analyzer/heuristic → deterministic engines
+  ├── router  → provider plan (manual / automatic / automatic+fallback)
+  ├── live    → lib/ai/providers/{gemini,openai-compatible} → structured JSON → Zod validation
+  └── demo    → lib/ai/demo/{discover,improve}, lib/ai/analyzer/heuristic → deterministic engines
   │
   ▼
 Business logic          lib/scoring/*, lib/prompt/draft.ts  ← overall score, comparison, draft composer
@@ -34,11 +35,11 @@ own AI routes, where it is used for that request alone.
 | Path | Responsibility |
 |---|---|
 | `app/` | Routes and route handlers. Pages are thin; views live in `components/`. |
-| `app/api/ai/{discover,generate,analyze,improve,status,verify}/route.ts` | HTTP boundary: validate, throttle, delegate, normalise errors. |
+| `app/api/ai/{discover,generate,analyze,improve,status,verify,models,usage}/route.ts` | HTTP boundary: validate, throttle, delegate, normalise errors. |
 | `components/layout/` | Shell, navigation, workspace headers. |
 | `components/builder/` | Guided builder, advanced builder, prompt workspace, and the tab switch that shares one draft. |
 | `components/theme/` | Theme segmented control and the quick light/dark toggle. |
-| `components/settings/` | Settings view and the browser key panel. |
+| `components/settings/` | Settings view, the Gemini key panel and the “AI Providers & Models” panel. |
 | `components/ui/` | Design-system primitives (button, field, slider, prompt editor, modal, notice, toast, disclosure). |
 | `components/analyzer/` | Analyzer workspace and the evaluation result surface. |
 | `components/improvement/` | Improve → re-evaluate → compare workflow and the shared comparison panel. |
@@ -47,7 +48,8 @@ own AI routes, where it is used for that request alone.
 | `components/comparison/` | Saved comparison records. |
 | `config/domains.ts` | Single source of truth: 20 categories, 5 groups, rubric copy, section templates, depths, agents, question seeds, missing-information signals. |
 | `config/` | App constants, slider definitions and presets, rubric axes, sample prompts. |
-| `lib/ai/` | Provider client, discovery orchestration, structured-call wrapper, instructions, schemas, error normalisation, throttling, demo engines. |
+| `lib/ai/` | Router, provider adapters, structured-call wrapper, health/usage ledgers, discovery orchestration, instructions, schemas, error normalisation, throttling, demo engines. |
+| `lib/ai/providers/` | Configuration resolution, provider metadata, Gemini and OpenAI-compatible adapters, tolerant preference validation. |
 | `lib/prompt/draft.ts` | Local depth/agent/brief-aware draft composer used by Demo Mode and the live-failure fallback. |
 | `lib/security/` | Browser key header name, validation and masking, shared by client and server. |
 | `lib/settings/` | Copy that describes the active key source. |
@@ -61,30 +63,69 @@ own AI routes, where it is used for that request alone.
 
 ## 3. AI integration
 
-**Key resolution.** `lib/ai/client.ts` resolves the active key for each request with a fixed priority:
+**Providers.** Three adapters sit behind one interface (`AiProviderAdapter` in
+`lib/ai/providers/adapter.ts`):
 
-1. a usable browser key supplied in the `x-promptscope-api-key` header;
-2. the server environment key `GEMINI_API_KEY`;
-3. no key, which switches the request to Demo Mode.
+| Provider | Transport | Structured output | Verification | Status in this repo |
+|---|---|---|---|---|
+| Google Gemini | `@google/genai` | Native `responseJsonSchema` | Model metadata probe + tiny generation | Preserved from the original integration; verified docs. |
+| Vikey | OpenAI-compatible HTTP (`/chat/completions`, `/models`) | `response_format: json_schema`, retried once without it if a model rejects it | `GET /models` + tiny generation | Verified against official docs at https://docs.vikey.ai. Live calls need a real key. |
+| Dattio | OpenAI-compatible HTTP | Same adapter as Vikey | Same adapter | **Opt-in and unverified**: no official public API documentation could be found, so no endpoint or model is defaulted. Both must be supplied by the operator. |
 
-An environment key uses one cached provider instance. A browser key builds a request-scoped instance
-and never replaces the process-wide provider, so one visitor's key cannot serve another visitor's
-request. `app/api/ai/status` reports the mode, model and source (`environment`, `browser` or `none`)
-without ever returning the key. `app/api/ai/verify` performs one minimal call so Settings can confirm a
-key before it is kept. `lib/security/browser-api-key.ts` validates the header and masks the value;
-`lib/api/client.ts` attaches the stored key only to this application's own `/api/ai/*` URLs. A missing
-or placeholder key switches the whole application to Demo Mode; `server-only` guards the AI modules so
-they can never be bundled into client code.
+**Key resolution.** `lib/ai/providers/config.ts` resolves configuration for each request:
 
-**One structured call path.** `lib/ai/provider.ts#callStructured`:
+1. a provider key supplied in `x-promptscope-provider-keys` (non-Gemini providers) or the legacy
+   `x-promptscope-api-key` header (Gemini);
+2. the server environment (`GEMINI_API_KEY`, `VIKEY_API_KEY`, `DATTIO_API_KEY`);
+3. no key for that provider, which makes it unavailable for this request.
 
-1. converts the operation's Zod schema to a JSON Schema (dropping keywords the provider does not
-   support) and sends `responseMimeType: application/json` with `responseJsonSchema`;
-2. applies a 45-second timeout;
-3. parses the response, tolerating code fences or surrounding prose;
-4. validates with the same Zod schema, plus an optional semantic check;
-5. on failure, retries **once** with the specific validation problems appended to the instruction;
-6. on a second failure, throws `invalid_response` rather than fabricating values.
+Non-secret preferences (enable/disable, model, base URL, routing) travel in `x-promptscope-ai-config`
+and are sanitised field by field: one invalid value never discards the rest. A browser key builds a
+request-scoped configuration and never replaces the process-wide one, so one visitor's key cannot serve
+another visitor's request. `app/api/ai/status` reports mode, the provider/model that would serve the next
+request, per-provider health and routing, without ever returning a key. `app/api/ai/verify` performs one
+minimal call for a named provider so Settings can confirm a key before it is kept.
+`lib/security/browser-api-key.ts` validates the headers and masks values; `lib/api/client.ts` attaches
+stored keys only to this application's own `/api/ai/*` URLs. `server-only` guards every AI module so none
+of them can be bundled into client code.
+
+**One structured call path.** `lib/ai/provider.ts#callStructured` delegates to `lib/ai/router.ts`, which
+selects a plan and then calls an adapter:
+
+1. the adapter converts the operation's Zod schema to a JSON Schema (dropping unsupported keywords);
+2. the request is sent with a timeout (90 s default, 45 s for generation-sized calls);
+3. the response is parsed, tolerating code fences or surrounding prose;
+4. it is validated with the same Zod schema plus the operation's semantic check;
+5. a failed validation is retried **once** with the specific problems appended to the instruction;
+6. a second failure throws `invalid_response` rather than fabricating values.
+
+The request object is never rewritten between providers: system instruction, user prompt, schema,
+temperature, output budget and semantic validation are identical for every attempt, so a fallback
+response passes exactly the same checks as the primary.
+
+**Routing.** `lib/ai/router.ts` builds an ordered plan from ready providers:
+
+- `manual` — the chosen provider (and optional model) only. If fallback is enabled it may still switch;
+  otherwise it never does. With no explicit choice it uses the single best provider.
+- `auto` — one provider, selected by preference, capability, model limits and recorded health. It does
+  **not** switch providers on failure.
+- `auto_fallback` (default) — the same selection, then the remaining providers in order.
+
+Failures are split by `isFallbackEligible`: `rate_limit`, `quota_exceeded`, `provider_overloaded`,
+`provider_error`, `timeout`, `network` and `insufficient_balance` may retry or switch. A rejected key,
+bad request, unknown model, unsupported capability or unrepairable response is reported immediately.
+Retries are bounded: at most two rounds, 500 ms base delay with jitter, and a `Retry-After` hint is
+honoured up to 10 s — a longer hint switches provider instead of stalling the user. A busy Gemini model
+still gets one quieter model within Gemini, which preserves the original 503 behaviour. A successful
+answer is never re-sent to another provider, so side-effecting work is not duplicated.
+
+**Health and usage.** `lib/ai/providers/health.ts` derives a status from real request outcomes only
+(`untested`, `connected`, `rate_limited`, `temporarily_unavailable`, `connection_failed`, `disabled`,
+`not_configured`). `lib/ai/providers/usage.ts` keeps a bounded, in-process ledger of requests, failures,
+latency, and tokens **only when the provider reports them**; missing usage is counted as unavailable, not
+estimated. Both reset on server restart and are labelled as such in Settings. `POST /api/ai/models` lists
+models the provider actually reports (falling back to documented ids), and `GET /api/ai/usage` exposes the
+ledger without any keys.
 
 **Four operations.** `discover.ts`, `generate.ts`, `analyze.ts` and `improve.ts` hold the domain rules:
 
@@ -109,9 +150,12 @@ data change, not a workflow change.
 **Instructions.** `lib/ai/prompts.ts` carries the rubric, the severity guidance, and the rules that
 forbid inventing evidence, rewarding length, or producing an overall score.
 
-**Errors.** `lib/ai/errors.ts` maps provider failures to a small closed set of codes with retryability
-and a safe user message per code. Raw provider text is kept in `detail` for server logs only, with the
-request's keys and Google key shapes redacted before anything is written.
+**Errors.** `lib/ai/errors.ts` maps provider failures to a small closed set of codes with retryability,
+fallback eligibility and a safe user message per code. Raw provider text is kept in `detail` for server
+logs only, with the request's keys and known key shapes (Google, `AQ.`, `sk-`) redacted before anything
+is written. Routes reply with `userMessageForCode[code]`, or with an application-authored `safeMessage`
+when one is set (for example, which provider is missing a key); provider text is never eligible for that
+field.
 
 **Throttling.** `lib/ai/throttle.ts` is a per-process sliding window (default 12 requests per 60 s per
 client identifier), configurable through `AI_RATE_LIMIT_MAX` and `AI_RATE_LIMIT_WINDOW_MS`.
@@ -174,9 +218,18 @@ Two preference keys:
 
 - `promptscope.theme.v1` — `system`, `light` or `dark`. A pre-paint script in `app/layout.tsx` applies
   it to `<html data-theme>` before hydration, so there is no flash and no mismatch.
-- `promptscope.browserApiKey.session` and `promptscope.browserApiKey.device.v1` — a key entered in
-  Settings. The session copy is the default; the device copy exists only after the user ticks
+- `promptscope.browserApiKey.session` and `promptscope.browserApiKey.device.v1` — the Gemini key entered
+  in Settings. The session copy is the default; the device copy exists only after the user ticks
   “remember this key”, and the UI states the risk before it is stored.
+
+Two multi-provider preference keys:
+
+- `promptscope.ai.providers.v1` — non-secret provider preferences (enabled flag, model, base URL) and
+  routing (mode, preferred provider, fallback order, fallback flag). Sanitised on read.
+- `promptscope.providerKey.{gemini,vikey,dattio}.session` and
+  `promptscope.providerKey.{...}.device.v1` — per-provider keys. Gemini delegates to the legacy keys
+  above so existing saved keys keep working; the others default to session storage and move to device
+  storage only after explicit opt-in. Keys are never written to the preference key and never logged.
 
 `sessionStorage` carries the builder→analyzer handoff, including the session and version ids when the
 prompt came from history, so a new evaluation attaches to the existing version instead of creating a
@@ -216,6 +269,10 @@ duplicate session. The handoff is read through `useSyncExternalStore` with a ser
 - A browser key is only as safe as the browser profile that holds it. It is readable by any script on
   the origin, so the environment variable remains the recommended production configuration.
 - The rate limiter is in-process, so it does not coordinate across instances.
+- Provider health and the usage ledger are also in-process and reset on server restart. They describe
+  observed traffic, not billing; token counts appear only when a provider reports them.
+- Dattio is available only as an unverified, opt-in OpenAI-compatible adapter. PromptScope does not
+  invent an endpoint, model, parameter set or auth format for it.
 - Live Gemini calls can take 30–90 seconds and may return provider 429/504; the UI falls back to demo
   discovery or a local draft with an explicit label.
 - Demo Mode's reasoning is rule-based; its interview is scripted from a seeded bank and it is honest

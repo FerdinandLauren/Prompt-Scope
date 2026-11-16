@@ -62,9 +62,24 @@ describe("verifyConnection", () => {
 
   it("fails clearly when no key is available at all", async () => {
     delete process.env.GEMINI_API_KEY;
+    delete process.env.VIKEY_API_KEY;
     const error = await verifyConnection(undefined).catch((thrown: unknown) => thrown);
     expect(error).toBeInstanceOf(AiError);
     expect((error as AiError).code).toBe("missing_api_key");
+  });
+
+  it("names the provider that is missing a key instead of a generic message", async () => {
+    const originalVikey = process.env.VIKEY_API_KEY;
+    delete process.env.VIKEY_API_KEY;
+
+    try {
+      const error = await verifyConnection(undefined, "vikey").catch((thrown: unknown) => thrown);
+      expect((error as AiError).code).toBe("missing_api_key");
+      expect((error as AiError).safeMessage).toBe("No Vikey API key is configured.");
+    } finally {
+      if (originalVikey === undefined) delete process.env.VIKEY_API_KEY;
+      else process.env.VIKEY_API_KEY = originalVikey;
+    }
   });
 
   it("maps a rejected key to invalid_api_key without echoing the key", async () => {
