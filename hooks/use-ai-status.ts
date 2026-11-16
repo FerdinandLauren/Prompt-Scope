@@ -1,17 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { getJson } from "@/lib/api/client";
+import { browserKeySnapshot, subscribeToBrowserKey } from "@/lib/storage/browser-api-key";
+import type { AiStatus } from "@/types/settings";
 
-export type AiStatus = {
-  mode: "live" | "demo";
-  model: string | null;
-  configured: boolean;
-};
+const FALLBACK: AiStatus = { mode: "demo", model: null, configured: false, source: "none" };
 
-const FALLBACK: AiStatus = { mode: "demo", model: null, configured: false };
-
-// One shared request per page load, no matter how many badges are mounted.
+// One shared request per configuration change, no matter how many badges are mounted.
 let statusPromise: Promise<AiStatus> | null = null;
 
 function loadStatus(): Promise<AiStatus> {
@@ -23,18 +19,30 @@ function loadStatus(): Promise<AiStatus> {
   return statusPromise;
 }
 
+function browserKeySignature() {
+  const snapshot = browserKeySnapshot();
+  return `${snapshot.hasKey ? "key" : "none"}:${snapshot.remembered ? "remembered" : "session"}`;
+}
+
 export function useAiStatus() {
+  const keySignature = useSyncExternalStore(subscribeToBrowserKey, browserKeySignature, () => "none");
   const [status, setStatus] = useState<AiStatus | null>(null);
 
   useEffect(() => {
     let active = true;
+    statusPromise = null;
     loadStatus().then((next) => {
       if (active) setStatus(next);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [keySignature]);
 
   return { status: status ?? FALLBACK, loading: status === null };
+}
+
+/** Clears the shared cache so the next read reflects a changed configuration. */
+export function resetAiStatusCache() {
+  statusPromise = null;
 }

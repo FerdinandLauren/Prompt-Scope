@@ -1,10 +1,19 @@
 "use client";
 
+import { describeKeySource } from "@/lib/settings/key-source";
 import { Badge } from "@/components/ui/badge";
 import { useAiStatus } from "@/hooks/use-ai-status";
 import { cn } from "@/lib/utils";
 
-export function ModeBadge({ className, showModel = false }: { className?: string; showModel?: boolean }) {
+export function ModeBadge({
+  className,
+  showModel = false,
+  showDetail = false,
+}: {
+  className?: string;
+  showModel?: boolean;
+  showDetail?: boolean;
+}) {
   const { status, loading } = useAiStatus();
 
   if (loading) {
@@ -20,14 +29,17 @@ export function ModeBadge({ className, showModel = false }: { className?: string
     );
   }
 
+  const described = describeKeySource(status);
+
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <Badge tone={status.mode === "live" ? "live" : "demo"}>
-        {status.mode === "live" ? "Live AI mode" : "Demo mode"}
+      <Badge tone={described.tone === "browser" ? "medium" : described.tone}>
+        {described.label}
       </Badge>
       {showModel && status.model ? (
         <span className="font-mono text-[9px] text-ink-3">{status.model}</span>
       ) : null}
+      {showDetail ? <span className="text-[11px] leading-[1.5] text-ink-3">{described.detail}</span> : null}
     </span>
   );
 }

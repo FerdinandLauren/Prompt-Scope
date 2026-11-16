@@ -9,6 +9,8 @@ import { Modal } from "@/components/ui/modal";
 import { Notice } from "@/components/ui/notice";
 import { useToast } from "@/components/ui/toast";
 import { ModeBadge } from "@/components/system/mode-badge";
+import { BrowserKeyPanel } from "@/components/settings/browser-key-panel";
+import { ThemeSegmentedControl } from "@/components/theme/theme-toggle";
 import { useAiStatus } from "@/hooks/use-ai-status";
 import { useSessions } from "@/hooks/use-sessions";
 import { useComparisons } from "@/hooks/use-comparisons";
@@ -17,7 +19,7 @@ import { evaluationDimensions } from "@/config/evaluation-rubric";
 import { clearSessions } from "@/lib/storage/prompt-storage";
 import { clearComparisons } from "@/lib/storage/comparison-storage";
 import { clearPendingPrompt } from "@/lib/storage/pending-prompt";
-import { getJson } from "@/lib/api/client";
+import { postJson } from "@/lib/api/client";
 
 export function SettingsView() {
   const { status, loading } = useAiStatus();
@@ -32,18 +34,14 @@ export function SettingsView() {
 
   async function testConnection() {
     setChecking(true);
-    const result = await getJson<{ mode: string; model: string | null; configured: boolean }>(
-      "/api/ai/status",
-    );
+    const result = await postJson<{ model: string; source: string }>("/api/ai/verify", {});
     setChecking(false);
     if (!result.ok) {
       setConnection(result.error.message);
       return;
     }
     setConnection(
-      result.data.configured
-        ? `Live mode is available. Model: ${result.data.model}.`
-        : "No API key is configured, so the app is running in Demo Mode. Live calls are disabled until GEMINI_API_KEY is set.",
+      `Provider reachable with ${result.data.model} using the ${result.data.source === "browser" ? "browser" : "server"} key.`,
     );
   }
 
@@ -52,18 +50,46 @@ export function SettingsView() {
       <WorkspaceHeader
         title="Settings"
         section="System"
-        description="Analysis mode, workspace inventory, local data controls, and the privacy terms of this application."
+        description="Analysis mode, API key, appearance, workspace inventory, local data controls, and the privacy terms of this application."
         meta={<ModeBadge showModel />}
       />
 
       <section className="py-7">
+        <h2 className="mono-label mb-3">Appearance</h2>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-line bg-bg-raised px-5 py-4">
+          <div>
+            <div className="text-[12.5px] font-medium text-ink">Color theme</div>
+            <p className="mt-1 max-w-[64ch] text-[11.5px] leading-[1.6] text-ink-3">
+              System follows your operating system. Your choice is remembered in this browser.
+            </p>
+          </div>
+          <ThemeSegmentedControl />
+        </div>
+      </section>
+
+      <section className="pb-7">
+        <h2 className="mono-label mb-3">API key</h2>
+        <BrowserKeyPanel />
+      </section>
+
+      <section className="py-2">
         <h2 className="mono-label mb-3">Analysis mode</h2>
         <div className="rounded-[10px] border border-line bg-bg-raised">
-          <div className="grid gap-px bg-line sm:grid-cols-3">
+          <div className="grid gap-px bg-line sm:grid-cols-4">
             <div className="bg-bg-raised px-4 py-3.5">
               <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Mode</div>
               <div className="mt-1.5 text-[13px] text-ink">
                 {loading ? "Checking…" : status.mode === "live" ? "Live AI mode" : "Demo mode"}
+              </div>
+            </div>
+            <div className="bg-bg-raised px-4 py-3.5">
+              <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Key source</div>
+              <div className="mt-1.5 text-[12px] text-ink-2">
+                {status.source === "browser"
+                  ? "Browser key"
+                  : status.source === "environment"
+                    ? "Server environment"
+                    : "None"}
               </div>
             </div>
             <div className="bg-bg-raised px-4 py-3.5">
@@ -76,10 +102,11 @@ export function SettingsView() {
             </div>
           </div>
           <div className="border-t border-line-soft px-4 py-4">
-            <p className="max-w-[80ch] text-[12px] leading-[1.65] text-ink-2">
-              Live mode sends your prompt to Google Gemini through a server-side route. The API key is read only on the
-              server and is never included in the browser bundle. Demo Mode evaluates prompts locally with a
-              deterministic rule engine and labels every result as demo data.
+            <p className="max-w-[86ch] text-[12px] leading-[1.65] text-ink-2">
+              Live mode sends your prompt to Google Gemini through a server-side route. Whichever key is active — the
+              server environment variable or the browser key you saved above — it is read only on the server for that
+              request. Demo Mode evaluates prompts locally with a deterministic rule engine and labels every result as
+              demo data.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
@@ -91,7 +118,7 @@ export function SettingsView() {
                 {checking ? "Checking…" : "Test configuration"}
               </button>
               <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                Reads the server route only
+                Calls /api/ai/verify
               </span>
             </div>
             {connection ? (

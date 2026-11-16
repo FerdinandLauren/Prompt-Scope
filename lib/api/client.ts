@@ -1,3 +1,6 @@
+import { getBrowserApiKey } from "@/lib/storage/browser-api-key";
+import { BROWSER_API_KEY_HEADER } from "@/lib/security/browser-api-key";
+
 export type ApiError = {
   code: string;
   message: string;
@@ -5,6 +8,22 @@ export type ApiError = {
 };
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: ApiError };
+
+/**
+ * Headers for an application request. A stored browser key is attached only to
+ * this application's own AI routes, never to third-party hosts.
+ */
+export function aiRequestHeaders(
+  url: string,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const headers: Record<string, string> = { ...extra };
+  if (!url.startsWith("/api/ai/")) return headers;
+
+  const key = getBrowserApiKey();
+  if (key) headers[BROWSER_API_KEY_HEADER] = key;
+  return headers;
+}
 
 const NETWORK_ERROR: ApiError = {
   code: "network",
@@ -43,7 +62,7 @@ export async function postJson<T>(
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: aiRequestHeaders(url, { "content-type": "application/json" }),
       body: JSON.stringify(body),
       signal,
     });
@@ -58,7 +77,7 @@ export async function postJson<T>(
 
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<ApiResult<T>> {
   try {
-    const response = await fetch(url, { signal, cache: "no-store" });
+    const response = await fetch(url, { headers: aiRequestHeaders(url), signal, cache: "no-store" });
     return await parse<T>(response);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
