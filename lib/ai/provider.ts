@@ -1,10 +1,16 @@
 import "server-only";
+import { ThinkingLevel } from "@google/genai";
 import { AiError, normalizeProviderError } from "@/lib/ai/errors";
 import { getModelId, getProvider } from "@/lib/ai/client";
 import { toGeminiJsonSchema } from "@/lib/ai/schemas";
 import type { z } from "zod";
 
-const REQUEST_TIMEOUT_MS = 45_000;
+/**
+ * Gemini 3.x models think before answering and a structured, multi-thousand
+ * token response can take a while on a cold call. This budget only stops a
+ * request that never settles.
+ */
+const REQUEST_TIMEOUT_MS = 90_000;
 
 export type StructuredRequest<T> = {
   systemInstruction: string;
@@ -13,6 +19,12 @@ export type StructuredRequest<T> = {
   temperature: number;
   maxOutputTokens: number;
   label: string;
+  /**
+   * Gemini 3 models think at medium level by default. Thinking tokens count
+   * against `maxOutputTokens`, so the default is lowered to keep structured
+   * responses fast and complete.
+   */
+  thinkingLevel?: ThinkingLevel;
   validate?: (data: T) => string | null;
 };
 
@@ -53,6 +65,7 @@ export async function callStructured<T>({
   temperature,
   maxOutputTokens,
   label,
+  thinkingLevel = ThinkingLevel.LOW,
   validate,
 }: StructuredRequest<T>, browserApiKey?: string): Promise<StructuredResult<T>> {
   const ai = getProvider(browserApiKey);
@@ -68,6 +81,7 @@ export async function callStructured<T>({
           systemInstruction,
           temperature,
           maxOutputTokens,
+          thinkingConfig: { thinkingLevel },
           responseMimeType: "application/json",
           responseJsonSchema,
         },

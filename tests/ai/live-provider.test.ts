@@ -103,7 +103,13 @@ describe("live AI mode", () => {
     const params = calls[0] as {
       model: string;
       contents: Array<{ parts: Array<{ text: string }> }>;
-      config: { responseMimeType: string; responseJsonSchema: unknown; systemInstruction: string };
+      config: {
+        responseMimeType: string;
+        responseJsonSchema: unknown;
+        systemInstruction: string;
+        thinkingConfig?: { thinkingLevel?: string };
+        maxOutputTokens?: number;
+      };
     };
 
     expect(params.model).toBe("gemini-3.8-flash");
@@ -111,6 +117,9 @@ describe("live AI mode", () => {
     expect(params.config.responseJsonSchema).toBeTruthy();
     expect(params.config.systemInstruction).toMatch(/clarity/i);
     expect(params.config.systemInstruction).toMatch(/never/i);
+    // Thinking is on for Gemini 3 models and its tokens share the output cap.
+    expect(params.config.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
+    expect(params.config.maxOutputTokens).toBeGreaterThanOrEqual(4096);
     expect(params.contents[0]!.parts[0]!.text).toContain(ANALYZE_INPUT.prompt);
   });
 
