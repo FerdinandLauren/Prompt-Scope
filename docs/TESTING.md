@@ -65,6 +65,11 @@ Lighthouse (via the in-app browser) on `/`, `/builder`, `/analyzer` (empty), `/a
 - Best practices: **100**.
 - SEO: **100**.
 
+Re-run against the production build (`next start`) after the theme and density work: accessibility **100**
+and best practices **100** on all seven routes. The mobile best-practices pass initially failed the
+legible-font audit (`45.96%` of analyzer text was under 12px); 11px metadata is now 12px below 640px,
+and the audit is clean.
+
 The first accessibility pass scored 96: the metadata token `#686F78` measured 3.85:1 against the page ground. The token is now `#7C838C`, which clears 4.5:1 on every surface in the palette, and the audit is 100 on the densest page.
 
 Manual keyboard checks (evidence in `qa-keyboard-motion.mjs`): the skip link is the first stop, all navigation and controls are reachable in order, sliders respond to arrow/Home/End keys, disclosures open with Enter, chips toggle with Space, dialogs move focus inside and close with Escape, and severity is always expressed with text as well as colour.

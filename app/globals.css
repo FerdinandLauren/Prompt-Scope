@@ -347,3 +347,13 @@ button:disabled {
     opacity: 0.4;
   }
 }
+
+/* Mobile legibility: 11px metadata is too small on a phone. This unlayered
+   rule wins over the utility layer, so it applies everywhere without
+   rewriting each component. */
+@media (max-width: 640px) {
+  .text-\[11px\] {
+    font-size: 12px;
+  }
+}
+
