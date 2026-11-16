@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ScopeMark } from "@/components/brand/scope-mark";
 import { ModeBadge } from "@/components/system/mode-badge";
+import { ThemeQuickToggle } from "@/components/theme/theme-toggle";
 import { APP_NAME, navigation, systemNavigation } from "@/config/app";
 import { cn } from "@/lib/utils";
 
@@ -143,7 +144,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
               <ModeBadge />
             </div>
-            <div className="mt-2 px-3 font-mono text-[9px] text-ink-3">v1.0 / rubric visual-uiux-v1</div>
+            <div className="mt-3 flex items-center justify-between px-1">
+              <span className="px-2 font-mono text-[9px] text-ink-3">v1.0 / visual-uiux-v1</span>
+              <ThemeQuickToggle />
+            </div>
           </div>
         </nav>
       </aside>
@@ -156,6 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
         <div className="flex items-center gap-1">
+          <ThemeQuickToggle />
           <Link
             href="/docs"
             aria-label="Documentation"
