@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, BarChart3, History, ScanSearch, SlidersHorizontal } from "lucide-react";
 import { ScopeMark } from "@/components/brand/scope-mark";
-import { Badge } from "@/components/ui/badge";
+import { ModeBadge } from "@/components/system/mode-badge";
 import { Panel } from "@/components/ui/panel";
 import { buttonClass } from "@/components/ui/button";
 
@@ -48,7 +48,7 @@ export function DashboardView() {
           <span className="text-ink-2">Dashboard</span>
         </div>
         <div className="flex items-center gap-2">
-          <Badge tone="demo">Demo ready</Badge>
+          <ModeBadge />
           <span className="hidden font-mono text-[9px] uppercase tracking-[0.12em] text-ink-3 sm:inline">
             rubric visual-uiux-v1
           </span>

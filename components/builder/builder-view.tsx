@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { Disclosure } from "@/components/ui/disclosure";
 import { LabeledInput, LabeledTextarea } from "@/components/ui/field";
-import { Notice } from "@/components/ui/notice";
+import { Notice, LoadingLine } from "@/components/ui/notice";
 import { PromptEditor } from "@/components/ui/prompt-editor";
 import { Slider } from "@/components/ui/slider";
 import { ToggleChip } from "@/components/ui/toggle-chip";
@@ -34,6 +34,7 @@ import {
   visualPreferenceOptions,
 } from "@/config/presets";
 import { buildDraftPrompt } from "@/lib/prompt/draft";
+import { postJson, type ApiError } from "@/lib/api/client";
 import { savePendingPrompt } from "@/lib/storage/pending-prompt";
 import { cn } from "@/lib/utils";
 import { firstIssue, promptConfigurationSchema } from "@/lib/validation/schemas";
@@ -58,6 +59,7 @@ export function BuilderView() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [customConstraint, setCustomConstraint] = useState("");
   const [generated, setGenerated] = useState<GeneratedPrompt | null>(null);
+  const [generationError, setGenerationError] = useState<ApiError | null>(null);
   const [promptText, setPromptText] = useState("");
   const [title, setTitle] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -135,7 +137,7 @@ export function BuilderView() {
     setCustomConstraint("");
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     const parsed = promptConfigurationSchema.safeParse(configuration);
     if (!parsed.success) {
       const nextErrors = firstIssue(parsed.error);
@@ -146,17 +148,43 @@ export function BuilderView() {
     }
 
     setErrors({});
+    setGenerationError(null);
     setGenerating(true);
-    // Milestone 2 preview: this is a local, deterministic draft — never labelled as AI.
-    window.requestAnimationFrame(() => {
-      const draft = buildDraftPrompt(parsed.data);
-      setGenerated(draft);
-      setPromptText(draft.prompt);
-      setTitle(draft.title);
-      setGenerating(false);
-      previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      showToast("Structured draft created from your direction. Edit any part before analysis.", "success");
+
+    const result = await postJson<GeneratedPrompt>("/api/ai/generate", {
+      configuration: parsed.data,
     });
+
+    setGenerating(false);
+
+    if (!result.ok) {
+      // The local composer is always available, so a provider failure is recoverable.
+      setGenerationError(result.error);
+      showToast(result.error.message, "error");
+      return;
+    }
+
+    setGenerated(result.data);
+    setPromptText(result.data.prompt);
+    setTitle(result.data.title);
+    previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast(
+      result.data.source === "live"
+        ? "Prompt generated. Review and edit before analysis."
+        : "Demo Mode composed a structured prompt from your direction.",
+      result.data.source === "live" ? "success" : "info",
+    );
+  }
+
+  function useLocalDraft() {
+    const parsed = promptConfigurationSchema.safeParse(configuration);
+    if (!parsed.success) return;
+    const draft = buildDraftPrompt(parsed.data);
+    setGenerated(draft);
+    setPromptText(draft.prompt);
+    setTitle(draft.title);
+    setGenerationError(null);
+    showToast("Local draft created. It is labelled as a local draft, not an AI response.", "info");
   }
 
   function resetConfiguration() {
@@ -164,6 +192,7 @@ export function BuilderView() {
     setCustomConstraint("");
     setErrors({});
     setGenerated(null);
+    setGenerationError(null);
     setPromptText("");
     setTitle("");
     showToast("Direction reset to defaults.", "info");
@@ -449,8 +478,8 @@ export function BuilderView() {
               <div>
                 <div className="text-[12px] font-medium text-ink">Ready to compose?</div>
                 <p className="mt-0.5 max-w-[54ch] text-[11px] leading-[1.5] text-ink-3">
-                  This milestone builds a structured local draft from your configuration. AI generation uses the
-                  same interface when the provider is connected.
+                  Generation runs on the server. Without a configured key, Demo Mode composes the prompt locally
+                  and labels it as demo data.
                 </p>
               </div>
               <button
@@ -464,6 +493,29 @@ export function BuilderView() {
                 <Sparkles size={14} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </div>
+            {generating ? (
+              <div className="mt-3 border-t border-line-soft pt-3">
+                <LoadingLine label="Composing structured prompt" />
+              </div>
+            ) : null}
+            {generationError ? (
+              <Notice
+                tone="error"
+                title="Generation failed"
+                className="mt-3"
+                action={
+                  <button
+                    type="button"
+                    onClick={useLocalDraft}
+                    className={buttonClass({ variant: "secondary", size: "sm" })}
+                  >
+                    Use local draft
+                  </button>
+                }
+              >
+                {generationError.message} Your configuration is unchanged.
+              </Notice>
+            ) : null}
             {errors.objective ? (
               <p className="mt-2 text-[11px] text-[#f0a1a5]" role="alert">
                 {errors.objective}
@@ -505,8 +557,18 @@ export function BuilderView() {
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[12px] font-medium text-ink">Prompt output</h2>
                 <div className="flex items-center gap-2">
-                  <Badge tone={generated?.source === "draft" ? "medium" : "neutral"}>
-                    {generated ? "Local draft" : "Not generated"}
+                  <Badge
+                    tone={
+                      !generated ? "neutral" : generated.source === "live" ? "live" : "demo"
+                    }
+                  >
+                    {!generated
+                      ? "Not generated"
+                      : generated.source === "live"
+                        ? "Model output"
+                        : generated.source === "demo"
+                          ? "Demo data"
+                          : "Local draft"}
                   </Badge>
                   <span className="font-mono text-[9px] text-ink-3">{category.shortLabel}</span>
                 </div>
@@ -554,7 +616,16 @@ export function BuilderView() {
                       This preview is assembled from your configuration. Provider generation replaces it when a Gemini
                       key is configured.
                     </Notice>
-                  ) : null}
+                  ) : generated.source === "demo" ? (
+                    <Notice tone="demo" title="DEMO DATA — composed locally">
+                      Demo Mode built this prompt from the same structure a live model uses. No request was sent to a
+                      provider. Add <span className="font-mono">GEMINI_API_KEY</span> to generate a tailored prompt.
+                    </Notice>
+                  ) : (
+                    <Notice tone="success" title="Generated by the configured model">
+                      Review the requirements before use. Edit any part; the prompt is yours to change.
+                    </Notice>
+                  )}
 
                   <PromptEditor
                     id="builder-prompt"
@@ -604,7 +675,7 @@ export function BuilderView() {
                       onClick={handleGenerate}
                       className={buttonClass({ variant: "secondary", size: "md" })}
                     >
-                      Rebuild draft
+                      Generate again
                     </button>
                     <button
                       type="button"

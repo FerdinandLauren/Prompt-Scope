@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ScopeMark } from "@/components/brand/scope-mark";
+import { ModeBadge } from "@/components/system/mode-badge";
 import { APP_NAME, navigation, systemNavigation } from "@/config/app";
 import { cn } from "@/lib/utils";
 
@@ -140,10 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-3">
                 Local workspace
               </span>
-              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-green">
-                <span className="h-1.5 w-1.5 rounded-full bg-green" aria-hidden="true" />
-                Ready
-              </span>
+              <ModeBadge />
             </div>
             <div className="mt-2 px-3 font-mono text-[9px] text-ink-3">v1.0 / rubric visual-uiux-v1</div>
           </div>
