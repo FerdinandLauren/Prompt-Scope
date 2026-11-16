@@ -70,13 +70,13 @@ export const userMessageForCode: Record<AiErrorCode, string> = {
 
 /**
  * Converts any thrown value into a safe, non-leaking AiError. The provider's
- * own text is preserved in `detail` for server logs and is never sent to the
- * browser.
+ * own text is preserved in `detail` for server logs, with any supplied secret
+ * redacted, and is never sent to the browser.
  */
-export function normalizeProviderError(error: unknown): AiError {
+export function normalizeProviderError(error: unknown, secrets: Array<string | undefined> = []): AiError {
   if (error instanceof AiError) return error;
 
-  const raw = error instanceof Error ? error.message : String(error);
+  const raw = redactSecrets(error instanceof Error ? error.message : String(error), secrets);
   const status = extractStatus(error, raw);
   const lower = raw.toLowerCase();
   const message = status
@@ -127,4 +127,21 @@ function extractStatus(error: unknown, message: string): number {
   }
   const match = message.match(/\b(4\d{2}|5\d{2})\b/);
   return match ? Number(match[1]) : 0;
+}
+
+/**
+ * Removes API keys from text destined for logs. Accepts the explicit secrets of
+ * the current request plus the general shapes of Google API keys.
+ */
+export function redactSecrets(text: string, secrets: Array<string | undefined> = []): string {
+  let result = text;
+  for (const secret of secrets) {
+    const value = secret?.trim();
+    if (value && value.length >= 8) {
+      result = result.split(value).join("***");
+    }
+  }
+  return result
+    .replace(/\bAIza[0-9A-Za-z_-]{10,}/g, "***")
+    .replace(/\bAQ\.[0-9A-Za-z._-]{10,}/g, "***");
 }

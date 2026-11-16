@@ -54,8 +54,8 @@ export async function callStructured<T>({
   maxOutputTokens,
   label,
   validate,
-}: StructuredRequest<T>): Promise<StructuredResult<T>> {
-  const ai = getProvider();
+}: StructuredRequest<T>, browserApiKey?: string): Promise<StructuredResult<T>> {
+  const ai = getProvider(browserApiKey);
   const model = getModelId();
   const responseJsonSchema = toGeminiJsonSchema(schema);
 
@@ -138,7 +138,7 @@ ${issues}`,
   try {
     return await attempt(userPrompt, false);
   } catch (error) {
-    throw normalizeProviderError(error);
+    throw normalizeProviderError(error, [browserApiKey, process.env.GEMINI_API_KEY]);
   }
 }
 

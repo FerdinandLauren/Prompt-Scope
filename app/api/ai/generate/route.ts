@@ -1,5 +1,6 @@
 import { generatePrompt } from "@/lib/ai/generate";
 import { apiSuccess, failureFromError, guardRateLimit, readValidatedBody } from "@/lib/api/handler";
+import { resolveBrowserApiKey } from "@/lib/security/browser-api-key";
 import { generateRequestSchema } from "@/lib/validation/schemas";
 
 export const runtime = "nodejs";
@@ -12,8 +13,10 @@ export async function POST(request: Request) {
   const body = await readValidatedBody(request, generateRequestSchema);
   if (!body.ok) return body.response;
 
+  const browserApiKey = resolveBrowserApiKey(request);
+
   try {
-    const result = await generatePrompt(body.data.configuration);
+    const result = await generatePrompt(body.data.configuration, browserApiKey);
     return apiSuccess(result);
   } catch (error) {
     return failureFromError(error);

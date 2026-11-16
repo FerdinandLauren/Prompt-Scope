@@ -1,5 +1,6 @@
 import { improvePrompt } from "@/lib/ai/improve";
 import { apiSuccess, failureFromError, guardRateLimit, readValidatedBody } from "@/lib/api/handler";
+import { resolveBrowserApiKey } from "@/lib/security/browser-api-key";
 import { improveRequestSchema } from "@/lib/validation/schemas";
 
 export const runtime = "nodejs";
@@ -14,26 +15,30 @@ export async function POST(request: Request) {
 
   const { originalPrompt, category, rubricVersion, priorities, additionalInstructions, analysis } =
     body.data;
+  const browserApiKey = resolveBrowserApiKey(request);
 
   try {
-    const improvement = await improvePrompt({
-      originalPrompt,
-      category,
-      rubricVersion,
-      priorities,
-      additionalInstructions,
-      analysis: analysis
-        ? {
-            summary: analysis.summary,
-            weaknesses: analysis.weaknesses.map((weakness) => ({
-              dimension: weakness.dimension,
-              severity: weakness.severity,
-              problem: weakness.problem,
-              suggestion: weakness.suggestion,
-            })),
-          }
-        : undefined,
-    });
+    const improvement = await improvePrompt(
+      {
+        originalPrompt,
+        category,
+        rubricVersion,
+        priorities,
+        additionalInstructions,
+        analysis: analysis
+          ? {
+              summary: analysis.summary,
+              weaknesses: analysis.weaknesses.map((weakness) => ({
+                dimension: weakness.dimension,
+                severity: weakness.severity,
+                problem: weakness.problem,
+                suggestion: weakness.suggestion,
+              })),
+            }
+          : undefined,
+      },
+      browserApiKey,
+    );
 
     return apiSuccess(improvement);
   } catch (error) {

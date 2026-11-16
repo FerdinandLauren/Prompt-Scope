@@ -35,8 +35,11 @@ export function normalizePriorities(priorities: string[]): string[] {
   return result.slice(0, 8);
 }
 
-export async function improvePrompt(input: ImproveInput): Promise<PromptImprovement> {
-  const status = getAiStatus();
+export async function improvePrompt(
+  input: ImproveInput,
+  browserApiKey?: string,
+): Promise<PromptImprovement> {
+  const status = getAiStatus(browserApiKey);
   const priorities = normalizePriorities(input.priorities);
 
   if (status.mode === "demo") {
@@ -48,22 +51,27 @@ export async function improvePrompt(input: ImproveInput): Promise<PromptImprovem
     });
   }
 
-  const { data } = await callStructured({
-    systemInstruction: buildImprovementInstruction(),
-    userPrompt: buildImprovementPrompt({
-      originalPrompt: input.originalPrompt,
-      analysis: input.analysis,
-      priorities,
-      additionalInstructions: input.additionalInstructions,
-      category: input.category,
-    }),
-    schema: improvementResponseSchema,
-    temperature: 0.4,
-    maxOutputTokens: 6144,
-    label: "improve",
-    validate: (payload) =>
-      payload.improvedPrompt.trim().length < 80 ? "improvedPrompt must contain the full revised prompt" : null,
-  });
+  const { data } = await callStructured(
+    {
+      systemInstruction: buildImprovementInstruction(),
+      userPrompt: buildImprovementPrompt({
+        originalPrompt: input.originalPrompt,
+        analysis: input.analysis,
+        priorities,
+        additionalInstructions: input.additionalInstructions,
+        category: input.category,
+      }),
+      schema: improvementResponseSchema,
+      temperature: 0.4,
+      maxOutputTokens: 6144,
+      label: "improve",
+      validate: (payload) =>
+        payload.improvedPrompt.trim().length < 80
+          ? "improvedPrompt must contain the full revised prompt"
+          : null,
+    },
+    browserApiKey,
+  );
 
   return {
     improvedPrompt: data.improvedPrompt,

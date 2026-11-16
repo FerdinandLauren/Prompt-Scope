@@ -17,13 +17,11 @@ export type AnalyzeInput = {
   rubricVersion: string;
 };
 
-export async function analyzePrompt({
-  prompt,
-  title,
-  category,
-  rubricVersion,
-}: AnalyzeInput): Promise<EvaluationSnapshot> {
-  const status = getAiStatus();
+export async function analyzePrompt(
+  { prompt, title, category, rubricVersion }: AnalyzeInput,
+  browserApiKey?: string,
+): Promise<EvaluationSnapshot> {
+  const status = getAiStatus(browserApiKey);
 
   if (status.mode === "demo") {
     return heuristicEvaluate({
@@ -35,20 +33,23 @@ export async function analyzePrompt({
     });
   }
 
-  const { data, model } = await callStructured({
-    systemInstruction: buildAnalysisInstruction(),
-    userPrompt: buildAnalysisPrompt({ prompt, category, title }),
-    schema: evaluationResponseSchema,
-    temperature: 0.2,
-    maxOutputTokens: 4096,
-    label: "analyze",
-    validate: (payload) => {
-      if (!hasAllDimensions(payload)) {
-        return "dimensions must include all eight keys exactly once";
-      }
-      return rejectionMessage(payload);
+  const { data, model } = await callStructured(
+    {
+      systemInstruction: buildAnalysisInstruction(),
+      userPrompt: buildAnalysisPrompt({ prompt, category, title }),
+      schema: evaluationResponseSchema,
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      label: "analyze",
+      validate: (payload) => {
+        if (!hasAllDimensions(payload)) {
+          return "dimensions must include all eight keys exactly once";
+        }
+        return rejectionMessage(payload);
+      },
     },
-  });
+    browserApiKey,
+  );
 
   const dimensions = Object.fromEntries(
     data.dimensions.map((dimension) => [dimension.key, dimension.score]),
