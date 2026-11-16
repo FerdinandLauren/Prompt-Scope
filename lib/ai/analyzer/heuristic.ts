@@ -195,22 +195,32 @@ export function heuristicEvaluate({
     const rule = rules[dimension.key];
     const found: string[] = [];
     const absent: string[] = [];
-    let score = rule.baseline;
+    let points = 0;
 
     for (const signal of rule.signals) {
-      const occurrences = count(text, new RegExp(signal.pattern.source, signal.pattern.flags.includes("g") ? signal.pattern.flags : `${signal.pattern.flags}g`));
+      const pattern = new RegExp(
+        signal.pattern.source,
+        signal.pattern.flags.includes("g") ? signal.pattern.flags : `${signal.pattern.flags}g`,
+      );
+      const occurrences = count(text, pattern);
       if (occurrences > 0) {
         found.push(signal.label);
-        score += signal.weight * Math.min(2, occurrences) * 0.75;
+        points += signal.weight * Math.min(2, occurrences) * 0.75;
       } else {
         absent.push(signal.label);
       }
     }
 
-    if (wordCount > 220) score += 4;
+    // Diminishing returns: extra signals help, but a prompt cannot reach a
+    // perfect score by repetition alone. The ceiling stays below 100.
+    const SATURATION_K = 40;
+    const CEILING = 98;
+    let score = rule.baseline + (CEILING - rule.baseline) * (1 - Math.exp(-points / SATURATION_K));
+
+    if (wordCount > 220) score += 2;
     score -= brevityPenalty;
 
-    const finalScore = Math.max(0, Math.min(100, Math.round(score)));
+    const finalScore = Math.max(0, Math.min(CEILING, Math.round(score)));
 
     const explanationParts: string[] = [];
     if (found.length) explanationParts.push(`Detected ${found.slice(0, 3).join(", ")}.`);

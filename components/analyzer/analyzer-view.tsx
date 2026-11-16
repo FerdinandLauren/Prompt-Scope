@@ -13,6 +13,7 @@ import { postJson, type ApiError } from "@/lib/api/client";
 import { analyzeRequestSchema, firstIssue } from "@/lib/validation/schemas";
 import { fingerprintPrompt } from "@/lib/scoring/calculate-score";
 import { EvaluationResults } from "@/components/analyzer/evaluation-results";
+import { ImprovementWorkflow } from "@/components/improvement/improvement-workflow";
 import { SAMPLE_PROMPTS } from "@/config/samples";
 import { usePendingPrompt } from "@/hooks/use-pending-prompt";
 import type { EvaluationSnapshot } from "@/types/evaluation";
@@ -251,13 +252,24 @@ export function AnalyzerView() {
 
         <section className="min-w-0 lg:col-span-7">
           {result ? (
-            <EvaluationResults
-              snapshot={result}
-              title={title || undefined}
-              category={category}
-              originalPrompt={prompt}
-              onAnalyzeAgain={handleAnalyze}
-            />
+            <div className="space-y-4">
+              <EvaluationResults
+                snapshot={result}
+                title={title || undefined}
+                category={category}
+                originalPrompt={prompt}
+                onAnalyzeAgain={handleAnalyze}
+                onImprove={() =>
+                  document.getElementById("improve-workflow")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
+              />
+              <ImprovementWorkflow
+                originalPrompt={prompt}
+                originalSnapshot={result}
+                category={category}
+                title={title || undefined}
+              />
+            </div>
           ) : phase === "analyzing" ? (
             <AnalysisSkeleton />
           ) : (

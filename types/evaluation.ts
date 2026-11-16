@@ -72,14 +72,16 @@ export type GeneratedPromptResult = GeneratedPrompt;
 export type ComparisonRecord = {
   id: string;
   createdAt: string;
-  sessionId: string;
-  originalVersionId: string;
-  improvedVersionId: string;
+  title: string;
+  category: string;
+  rubricVersion: string;
   originalPrompt: string;
   improvedPrompt: string;
   original: EvaluationSnapshot;
   improved: EvaluationSnapshot;
   improvement: PromptImprovement | null;
+  /** Set when the comparison is linked to a saved history session. */
+  sessionId?: string;
 };
 
 export type DimensionComparison = {

@@ -34,6 +34,7 @@ export function EvaluationResults({
   category,
   originalPrompt,
   onAnalyzeAgain,
+  onImprove,
   actions,
 }: {
   snapshot: EvaluationSnapshot;
@@ -41,6 +42,7 @@ export function EvaluationResults({
   category: string;
   originalPrompt: string;
   onAnalyzeAgain?: () => void;
+  onImprove?: () => void;
   actions?: React.ReactNode;
 }) {
   const { showToast } = useToast();
@@ -83,6 +85,16 @@ export function EvaluationResults({
               </span>
             </div>
             <p className="mt-3 max-w-[70ch] text-[12.5px] leading-[1.65] text-ink-2">{snapshot.summary}</p>
+            {onImprove ? (
+              <button
+                type="button"
+                onClick={onImprove}
+                className={buttonClass({ variant: "secondary", size: "sm", className: "mt-3" })}
+              >
+                Improve this prompt
+                <span aria-hidden="true">↓</span>
+              </button>
+            ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
               <span>{category}</span>
               <span>{formatDate(snapshot.createdAt, "long")}</span>
