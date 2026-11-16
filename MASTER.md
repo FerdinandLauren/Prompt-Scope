@@ -5,11 +5,45 @@
 **Project Name:** PromptScope  
 **Product Type:** AI-Powered Web Application  
 **Category:** AI Prompt Engineering / Productivity / Developer Tools  
-**Document Version:** 1.0  
-**Status:** Ready for Development  
-**Primary AI Provider:** Google Gemini API  
-**Primary Development Stack:** Next.js, TypeScript, Tailwind CSS, Recharts  
+**Document Version:** 2.0
+**Status:** Implemented
+**Primary AI Provider:** Google Gemini API
+**Primary Development Stack:** Next.js, TypeScript, Tailwind CSS, Recharts
 **Initial Target Domain:** Visual Design & UI/UX Prompt Engineering
+**Current Scope:** 20 categories across 5 domain groups, 7 target-agent profiles, 4 prompt depths
+
+---
+
+## Revision 2.0 — Guided Prompt Engineering Platform
+
+Version 1.0 specified a direction-and-evaluation studio for visual design prompts. Version 2.0 keeps
+that toolset intact and adds a guided front door plus a broader domain model.
+
+**What changed**
+
+- **Guided Prompt Builder (default).** Idea → understanding → adaptive interview → editable project
+  brief → depth/agent selection → generated prompt. Beginners no longer need prompt-engineering
+  vocabulary to start.
+- **Advanced Builder retained.** The original Module 1 configuration studio is still available as the
+  **Advanced** tab. Both tabs share one persisted draft, so switching never loses work.
+- **Twenty categories, five groups.** Design, Software, AI & Data, Business, Content. `config/domains.ts`
+  is the single source of truth for categories, rubric copy, section templates and question seeds.
+- **Domain-aware rubrics.** The eight evaluation axis keys are unchanged. Each family supplies its own
+  labels, descriptions and scoring guidance, with per-category overrides where useful. Rubric versions:
+  `visual-uiux-v1`, `software-v1`, `ai-data-v1`, `business-v1`, `content-v1`.
+- **Four depths.** Concise, Balanced, Detailed, Comprehensive. Depth adds real detail — assumptions,
+  open questions, uncertainty policy, verification — instead of repeating lines.
+- **Seven target agents.** General, Coding, Design, Research, Workflow Automation, Content, Custom. The
+  coding profile covers repository inspection, planning, implementation rules, verification and a final
+  report, and forbids unrequested commit, push, deploy or destructive commands.
+- **Discovery API.** `POST /api/ai/discover` returns one turn at a time and always declares
+  `source: "live" | "demo"`.
+- **Honest fallbacks.** Demo discovery/generation is labelled `DEMO DATA`; a failed live generation falls
+  back to a local draft labelled `Local draft — not an AI response`.
+- **Brief provenance.** Every brief section is `user`, `assumption` or `recommendation`. Unknown answers
+  persist the seed's recommendation and are explicitly marked "confirm or replace this assumption".
+
+The v1.0 modules, scoring bands, design system, security rules and non-goals below remain in force.
 
 ---
 
@@ -109,23 +143,31 @@ Examples:
 
 ## 6. Initial Product Scope
 
-The first release should focus primarily on:
+Release 1.0 focused on Visual Design & UI/UX Prompt Engineering because that domain provides a clear
+opportunity to evaluate visual instructions, hierarchy, composition, typography, and output
+specifications.
 
-**Visual Design & UI/UX Prompt Engineering.**
+Release 2.0 keeps that depth and widens the scope to twenty categories in five groups:
 
-This domain is selected because it provides a clear opportunity to evaluate visual instructions, hierarchy, composition, typography, and output specifications.
+| Group | Categories |
+|---|---|
+| Design & Interfaces | UI/UX Design, Visual Design, Product Design, Design System |
+| Software Engineering | Frontend, Backend, Full-Stack, Mobile, Software Engineering, API Development |
+| AI & Data | AI Application, Machine Learning, Data Analytics, AI Agent |
+| Business & Operations | Business Analysis, Workflow Automation, Operations |
+| Content & Research | Content Creation, Technical Writing, Research & Education |
+
+Every category has its own description, example idea, rubric copy, section template and question seeds.
+The eight evaluation axis keys are shared so stored evaluations remain comparable across categories.
 
 The application architecture must remain extensible so additional domains can be introduced later.
-
 Potential future domains:
 
-- Content Creation.
-- Software Development.
-- Business Analysis.
 - Marketing.
-- Research & Education.
+- Legal and compliance.
+- Finance.
 
-Do not attempt to implement every domain in the first release.
+Do not present a category as functional until its definition exists in `config/domains.ts`.
 
 ---
 
@@ -133,9 +175,42 @@ Do not attempt to implement every domain in the first release.
 
 ## 7. Core Functional Modules
 
-PromptScope consists of five primary modules.
+PromptScope consists of six primary modules: the guided builder, the advanced direction builder, the
+analyzer, the improver, quality visualization, and history.
 
-### MODULE 1 — Prompt Direction Builder
+### MODULE 0 — Guided Prompt Builder
+
+**Purpose:**
+
+Turn a plain-language idea into a reviewed brief and a structured prompt, without requiring the user to
+know prompt-engineering vocabulary.
+
+**Flow:**
+
+1. **Idea.** Free-text idea, optional sample, and a soft question budget (3–12).
+2. **Understanding.** Detect category, complexity, explicit requirements, ambiguities and missing
+   information. Show what was understood before asking anything.
+3. **Interview.** One question at a time, each with a short "why". Accept free text, suggestions,
+   **I don't know**, or **Skip**. Never repeat a question. Stop at the budget or when enough information
+   exists.
+4. **Brief.** An editable project brief whose sections are labelled `Your input`, `Assumption` or
+   `Recommendation`, with unresolved areas under `Open questions`. The user can edit and must confirm.
+5. **Tuning.** Choose one of four depths and one of seven target agents, with a recommendation derived
+   from brief complexity.
+6. **Prompt.** Editable prompt with outline, per-section copy, copy-all, Markdown export, save, analyze,
+   regenerate and compare.
+
+**Rules:**
+
+- An unknown answer yields a recommendation with rationale and trade-offs, recorded as an assumption.
+- Skipped answers leave the area open; they are never converted into requirements.
+- Uncertainty clauses ("I'm not sure which screens") belong in ambiguities, not explicit requirements.
+- The brief is the source of truth for generation; editing it changes the prompt.
+- Demo discovery is deterministic and labelled. It never claims a live model produced it.
+
+---
+
+### MODULE 1 — Prompt Direction Builder (Advanced)
 
 **Purpose:**
 
@@ -149,14 +224,27 @@ The Prompt Builder should provide the following fields:
 
 **A. Prompt Category**
 
-Initial available category:
+Categories are grouped in five families (Design, Software, AI & Data, Business, Content) and enumerated
+in `config/domains.ts`. All twenty are functional. A category always carries its group, rubric version,
+section templates and question seeds with it.
 
-- Visual Design.
-- UI/UX Design.
+**B. Prompt Depth (guided)**
 
-Future categories can be displayed as planned features, but should not be presented as functional until implemented.
+Optional `depth` field: `concise`, `balanced`, `detailed`, `comprehensive`. Defaults to a
+complexity-based recommendation when omitted.
 
-**B. Project Objective**
+**C. Target Agent (guided)**
+
+Optional `targetAgent` field: `general`, `coding`, `design`, `research`, `automation`, `writing`,
+`custom`. Agent profiles add an operating agreement and extra sections.
+
+**D. Project Brief (guided)**
+
+Optional `brief` field. When present it supplies objective, audience, context, requirements,
+constraints, deliverables, assumptions and unknowns. The composer prefers brief content over the
+equivalent manual fields.
+
+**E. Project Objective**
 
 Users describe what they want AI to create.
 
@@ -167,7 +255,7 @@ Examples:
 - Develop a minimalist mobile application interface.
 - Generate an editorial website layout.
 
-**C. Target Audience**
+**F. Target Audience**
 
 Examples:
 
@@ -177,11 +265,11 @@ Examples:
 - Developers.
 - Business owners.
 
-**D. Design Context**
+**G. Design Context**
 
 Users can explain the background of their project, including the purpose and intended environment.
 
-**E. Visual Preferences**
+**H. Visual Preferences**
 
 Allow users to describe the visual direction.
 
@@ -195,7 +283,7 @@ Examples:
 - Experimental.
 - Brutalist.
 
-**F. Output Requirements**
+**I. Output Requirements**
 
 Examples:
 
@@ -206,7 +294,7 @@ Examples:
 - Design concept.
 - UI component.
 
-**G. Additional Constraints**
+**J. Additional Constraints**
 
 Allow users to define specific requirements and limitations.
 
@@ -1127,6 +1215,43 @@ When a valid Gemini API key is configured, enable Live AI Mode.
 
 ## 14. API Endpoint Specifications
 
+### POST /api/ai/discover
+
+Purpose:
+
+Advance the guided discovery flow by one turn.
+
+Request:
+
+```json
+{
+  "idea": "A booking website for a small yoga studio",
+  "category": "ui_ux",
+  "answers": [
+    { "questionId": "design-audience", "question": "Who is it for?", "answer": "Studio members", "status": "answered" },
+    { "questionId": "design-platform", "question": "Where will people use it?", "answer": "I don't know", "status": "unknown" }
+  ],
+  "budget": 5
+}
+```
+
+Response:
+
+```ts
+type DiscoveryTurn = {
+  source: "live" | "demo";
+  understanding: { category; categoryLabel; complexity; summary; explicitRequirements; ambiguities; missingInformation };
+  question: { id; question; why; options; allowUnknown; target } | null;
+  recommendation: { questionId; recommendation; rationale; tradeoffs; recordedAsAssumption } | null;
+  brief: { title; objective; summary; category; complexity; sections; assumptions; unknowns };
+  answered: number;
+  budget: number;
+  enoughInformation: boolean;
+};
+```
+
+`source` is required so the UI can label demo turns. At most one question is returned per turn.
+
 ### POST /api/ai/generate
 
 Purpose:
@@ -1153,13 +1278,28 @@ Request:
     "detail": 70,
     "consistency": 95,
     "exploration": 40
+  },
+  "depth": "detailed",
+  "targetAgent": "coding",
+  "brief": {
+    "title": "Operations dashboard",
+    "objective": "Give the operations team a weekly churn review surface.",
+    "summary": "Internal tool, one team, weekly cadence.",
+    "category": "ui_ux",
+    "complexity": "moderate",
+    "sections": [],
+    "assumptions": [],
+    "unknowns": []
   }
 }
 ```
 
+`depth`, `targetAgent` and `brief` are optional so pre-2.0 clients keep working.
+
 Response:
 
-A validated structured generation result.
+A validated structured generation result, including `source` (`live` | `demo` | `draft`), `depth`,
+`targetAgent`, prompt sections and recommendations.
 
 ### POST /api/ai/analyze
 
@@ -1176,6 +1316,9 @@ Request:
   "rubricVersion": "visual-uiux-v1"
 }
 ```
+
+`category` selects the rubric family. The server ignores an unknown rubric version and uses the version
+attached to the category. Prompt text is capped at 40,000 characters.
 
 Response:
 
@@ -1215,6 +1358,10 @@ For important operations, retrieve or reconstruct trusted information from the c
 ## 15. Scoring System Implementation
 
 Create a centralized evaluation configuration.
+
+The eight keys are fixed. Labels, descriptions and guidance come from the selected category's family
+profile, with optional per-category overrides. This keeps stored scores comparable while letting a
+backend prompt be judged on architecture and reliability instead of visual direction.
 
 Example:
 
@@ -1289,6 +1436,67 @@ Store the evaluation rubric version so historical results can be interpreted cor
 
 Initial TypeScript models should include:
 
+### ProjectBrief (guided)
+
+```ts
+type ProjectBrief = {
+  title: string;
+  objective: string;
+  summary: string;
+  category: string;
+  complexity: "simple" | "moderate" | "complex";
+  sections: Array<{
+    id: string;
+    heading: string;
+    content: string;
+    source: "user" | "assumption" | "recommendation";
+  }>;
+  assumptions: string[];
+  unknowns: string[];
+  confirmedAt?: string;
+};
+
+type DiscoveryTurn = {
+  source: "live" | "demo";
+  understanding: {
+    category: string;
+    categoryLabel: string;
+    complexity: "simple" | "moderate" | "complex";
+    summary: string;
+    explicitRequirements: string[];
+    ambiguities: string[];
+    missingInformation: string[];
+  };
+  question: DiscoveryQuestion | null;
+  recommendation: DiscoveryRecommendation | null;
+  brief: ProjectBrief;
+  answered: number;
+  budget: number;
+  enoughInformation: boolean;
+};
+```
+
+### BuilderDraft (guided + advanced, one persisted object)
+
+```ts
+type BuilderDraft = {
+  mode: "guided" | "advanced";
+  configuration: PromptConfiguration;
+  guided: {
+    step: "idea" | "interview" | "brief" | "tuning" | "prompt";
+    idea: string;
+    budget: number;
+    depth: PromptDepth;
+    targetAgent: TargetAgentId;
+    answers: DiscoveryAnswer[];
+    brief: ProjectBrief | null;
+    briefConfirmed: boolean;
+    categoryHint: string;
+    generated: GeneratedPrompt | null;
+  };
+};
+```
+
 ### PromptSession
 
 ```ts
@@ -1338,6 +1546,10 @@ type PromptConfiguration = {
     consistency: number;
     exploration: number;
   };
+  // Optional in 2.0 so stored pre-2.0 configurations remain valid.
+  depth?: "concise" | "balanced" | "detailed" | "comprehensive";
+  targetAgent?: "general" | "coding" | "design" | "research" | "automation" | "writing" | "custom";
+  brief?: ProjectBrief;
 };
 ```
 
@@ -1660,6 +1872,38 @@ Acceptance Criteria:
 - AI configuration is secure.
 - Demo Mode works.
 - Setup instructions are reproducible.
+
+### MILESTONE 9 — Guided Prompt Engineering Platform (2.0)
+
+Objective:
+
+Move from a configuration-first generator to a guided platform that works for beginners and covers
+multiple domains without weakening the evaluation system.
+
+Tasks:
+
+- Add `config/domains.ts` as the single taxonomy and rubric source for 20 categories.
+- Add guided types, discovery API, demo discovery engine and local draft composer.
+- Build the guided builder: idea, understanding, interview, brief, tuning, prompt workspace.
+- Keep the advanced builder as a second tab sharing one persisted draft.
+- Add depth and target-agent profiles, including a coding operating agreement.
+- Make the analyzer and improver domain-aware while preserving the eight axis keys.
+- Add fallback labelling for demo and local-draft output.
+- Extend validation, storage and test coverage; add browser QA harnesses for demo and live flows.
+- Update product, design, architecture, testing and README documentation.
+
+Deliverables:
+
+- Guided and Advanced modes in one builder.
+- Domain-aware rubrics and prompt structures.
+- Clearly labelled demo and draft fallbacks.
+
+Acceptance Criteria:
+
+- The guided flow completes end to end in Demo Mode and in Live Mode.
+- Assumptions and open questions are never presented as confirmed requirements.
+- Every generated prompt and evaluation declares its source.
+- `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and `npm run check` pass.
 
 ---
 
@@ -2502,15 +2746,17 @@ Explicitly document:
 - Scores are not universal measurements.
 - Model responses may vary.
 - API access depends on provider availability and account quotas.
-- Demo Mode uses sample data.
-- MVP history is stored locally.
-- Additional prompt categories are planned but not initially implemented.
+- Demo Mode uses deterministic sample data; its interview is scripted from a seeded bank.
+- History, builder drafts and comparisons are stored locally.
+- Guided assumptions are recorded but cannot be verified for the user's project.
+- Coding-agent prompts do not run code, tests or deployments.
+- Live calls can take 30–90 seconds and may fail; fallbacks are labelled.
 
 ---
 
 # PART IX — FUTURE ROADMAP
 
-## 41. Version 1.0 — Core PromptScope
+## 41. Version 1.0 — Core PromptScope (shipped)
 
 - Prompt Builder.
 - Gemini Integration.
@@ -2521,42 +2767,37 @@ Explicitly document:
 - Prompt History.
 - Demo Mode.
 
-## 42. Version 1.5 — Expanded Evaluation
+## 42. Version 2.0 — Guided Prompt Engineering Platform (shipped)
+
+- Guided builder: idea → understanding → interview → brief → depth/agent → prompt.
+- Advanced builder retained in a shared-tab workspace.
+- 20 categories across 5 groups with domain-aware rubrics.
+- 4 depths and 7 target-agent profiles.
+- Discovery API and deterministic demo discovery.
+- Labelled demo and local-draft fallbacks.
+
+## 43. Version 2.1 — Workspace Depth
 
 Potential features:
 
-- Content Creation category.
-- Software Development category.
-- Additional evaluation rubrics.
+- Richer version diffing.
+- Per-section regeneration.
+- Saved brief templates.
 - Custom evaluation criteria.
-- More flexible prompt templates.
 - Enhanced prompt version comparison.
-
-## 43. Version 2.0 — Advanced Prompt Workspace
-
-Potential features:
-
-- Multiple AI providers.
-- Provider comparison.
-- Advanced prompt templates.
-- User accounts.
-- Cloud prompt history.
-- Exportable reports.
-- Custom evaluation profiles.
-- Collaborative prompt reviews.
 
 ## 44. Version 3.0 — Prompt Intelligence Platform
 
 Potential features:
 
-- Prompt benchmarking.
-- Historical quality analytics.
+- Multiple AI providers and provider comparison.
+- Prompt benchmarking and historical quality analytics.
 - Organization-specific evaluation rubrics.
-- Team workspaces.
-- Advanced AI workflow integration.
+- User accounts, cloud history and team workspaces.
+- Exportable reports.
 - Enterprise prompt governance.
 
-Future features must not delay the completion of the initial MVP.
+Future features must not delay the completion of the current release.
 
 ---
 
@@ -2612,7 +2853,7 @@ By combining configurable prompt generation, intelligent evaluation, actionable 
 
 # END OF MASTER DOCUMENT
 
-**Project:** PromptScope  
-**Document:** MASTER.md  
-**Version:** 1.0  
-**Development Status:** Ready to Begin
+**Project:** PromptScope
+**Document:** MASTER.md
+**Version:** 2.0
+**Development Status:** Implemented — see `docs/TESTING.md` for current verification

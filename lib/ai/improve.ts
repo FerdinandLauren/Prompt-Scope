@@ -4,7 +4,7 @@ import { callStructured } from "@/lib/ai/provider";
 import { improvementResponseSchema } from "@/lib/ai/schemas";
 import { buildImprovementInstruction, buildImprovementPrompt } from "@/lib/ai/prompts";
 import { demoImprove } from "@/lib/ai/demo/improve";
-import { evaluationDimensions } from "@/config/evaluation-rubric";
+import { getEvaluationDimensions } from "@/config/evaluation-rubric";
 import type { EvaluationSnapshot, PromptImprovement } from "@/types/evaluation";
 
 export type ImproveInput = {
@@ -23,10 +23,12 @@ export type ImproveInput = {
  * Priorities arrive from the browser, so they are mapped back to known
  * dimensions and anything unrecognised is dropped.
  */
-export function normalizePriorities(priorities: string[]): string[] {
-  const known = new Map(
-    evaluationDimensions.map((dimension) => [dimension.label.toLowerCase(), dimension.label as string]),
-  );
+export function normalizePriorities(priorities: string[], category?: string): string[] {
+  const known = new Map<string, string>();
+  for (const dimension of getEvaluationDimensions(category)) {
+    known.set(dimension.key.toLowerCase(), dimension.label);
+    known.set(dimension.label.toLowerCase(), dimension.label);
+  }
   const result: string[] = [];
   for (const priority of priorities) {
     const match = known.get(priority.trim().toLowerCase());
@@ -40,7 +42,7 @@ export async function improvePrompt(
   browserApiKey?: string,
 ): Promise<PromptImprovement> {
   const status = getAiStatus(browserApiKey);
-  const priorities = normalizePriorities(input.priorities);
+  const priorities = normalizePriorities(input.priorities, input.category);
 
   if (status.mode === "demo") {
     return demoImprove({
@@ -53,7 +55,7 @@ export async function improvePrompt(
 
   const { data } = await callStructured(
     {
-      systemInstruction: buildImprovementInstruction(),
+      systemInstruction: buildImprovementInstruction(input.category),
       userPrompt: buildImprovementPrompt({
         originalPrompt: input.originalPrompt,
         analysis: input.analysis,

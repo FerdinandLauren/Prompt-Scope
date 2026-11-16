@@ -1,6 +1,6 @@
 {
   "name": "promptscope",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "description": "PromptScope — an AI-powered prompt direction and evaluation studio.",
   "scripts": {

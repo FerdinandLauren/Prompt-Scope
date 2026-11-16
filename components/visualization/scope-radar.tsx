@@ -1,7 +1,7 @@
 "use client";
 
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
-import { evaluationDimensions } from "@/config/evaluation-rubric";
+import { getEvaluationDimensions } from "@/config/evaluation-rubric";
 import type { DimensionKey, EvaluationSnapshot } from "@/types/evaluation";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +14,11 @@ type ChartDatum = {
   single?: number;
 };
 
-function buildData(snapshots: Array<{ series: "original" | "improved" | "single"; snapshot: EvaluationSnapshot }>) {
-  return evaluationDimensions.map<ChartDatum>((dimension) => {
+function buildData(
+  snapshots: Array<{ series: "original" | "improved" | "single"; snapshot: EvaluationSnapshot }>,
+  category?: string,
+) {
+  return getEvaluationDimensions(category).map<ChartDatum>((dimension) => {
     const datum: ChartDatum = {
       key: dimension.key,
       axis: dimension.short,
@@ -37,6 +40,7 @@ export function ScopeRadar({
   original,
   improved,
   single,
+  category,
   height = 380,
   className,
   compact = false,
@@ -44,6 +48,7 @@ export function ScopeRadar({
   original?: EvaluationSnapshot;
   improved?: EvaluationSnapshot;
   single?: EvaluationSnapshot;
+  category?: string;
   height?: number;
   className?: string;
   compact?: boolean;
@@ -54,7 +59,7 @@ export function ScopeRadar({
     ...(single ? [{ series: "single" as const, snapshot: single }] : []),
   ];
 
-  const data = buildData(series);
+  const data = buildData(series, category);
   const showLegend = Boolean(original || improved);
 
   return (

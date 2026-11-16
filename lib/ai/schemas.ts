@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dimensionKeys } from "@/config/evaluation-rubric";
+import { CATEGORY_IDS } from "@/config/domains";
 
 export const dimensionKeySchema = z.enum([
   "clarity",
@@ -25,14 +26,14 @@ export const generationResponseSchema = z.object({
   sections: z
     .array(
       z.object({
-        heading: z.string().trim().min(2).max(80),
-        content: z.string().trim().min(2).max(2000),
+        heading: z.string().trim().min(2).max(90),
+        content: z.string().trim().min(2).max(4000),
       }),
     )
     .min(2)
-    .max(10),
-  assumptions: z.array(z.string().trim().min(2).max(400)).max(8),
-  recommendations: z.array(z.string().trim().min(2).max(400)).max(8),
+    .max(40),
+  assumptions: z.array(z.string().trim().min(2).max(500)).max(12),
+  recommendations: z.array(z.string().trim().min(2).max(500)).max(12),
 });
 
 const dimensionEntrySchema = z.object({
@@ -68,6 +69,53 @@ export const evaluationResponseSchema = z.object({
   recommendations: z.array(z.string().trim().min(4).max(400)).max(10),
 });
 
+const briefTextSchema = z.string().trim().min(1).max(500);
+
+export const discoveryResponseSchema = z.object({
+  summary: z.string().trim().min(8).max(1400),
+  objective: z.string().trim().min(8).max(700),
+  category: z.enum(CATEGORY_IDS),
+  categoryReason: z.string().trim().max(500),
+  categoryConfidence: scoreSchema,
+  complexity: z.enum(["simple", "moderate", "complex"]),
+  explicitRequirements: z.array(briefTextSchema).max(14),
+  constraints: z.array(briefTextSchema).max(12),
+  missingInformation: z.array(briefTextSchema).max(14),
+  ambiguities: z.array(briefTextSchema).max(10),
+  technicalConsiderations: z.array(briefTextSchema).max(10),
+  nextQuestion: z
+    .object({
+      question: z.string().trim().min(5).max(320),
+      why: z.string().trim().max(500),
+      options: z.array(z.string().trim().min(1).max(140)).max(6),
+      target: z.string().trim().min(2).max(90),
+    })
+    .nullable(),
+  recommendation: z
+    .object({
+      recommendation: z.string().trim().min(4).max(600),
+      rationale: z.string().trim().max(700),
+      tradeoffs: z.array(z.string().trim().min(1).max(400)).max(5),
+    })
+    .nullable(),
+  enoughInformation: z.boolean(),
+  brief: z.object({
+    title: z.string().trim().min(1).max(160),
+    sections: z
+      .array(
+        z.object({
+          heading: z.string().trim().min(1).max(90),
+          content: z.string().trim().max(3000),
+          source: z.enum(["user", "assumption", "recommendation"]),
+        }),
+      )
+      .min(1)
+      .max(24),
+    assumptions: z.array(briefTextSchema).max(14),
+    unknowns: z.array(briefTextSchema).max(14),
+  }),
+});
+
 export const improvementResponseSchema = z.object({
   improvedPrompt: z.string().trim().min(80),
   summary: z.string().trim().min(8).max(1200),
@@ -99,6 +147,7 @@ export const improvementResponseSchema = z.object({
 export type GenerationResponse = z.infer<typeof generationResponseSchema>;
 export type EvaluationResponse = z.infer<typeof evaluationResponseSchema>;
 export type ImprovementResponse = z.infer<typeof improvementResponseSchema>;
+export type DiscoveryResponse = z.infer<typeof discoveryResponseSchema>;
 
 /** Confirms all eight dimensions appear exactly once. */
 export function hasAllDimensions(response: EvaluationResponse) {

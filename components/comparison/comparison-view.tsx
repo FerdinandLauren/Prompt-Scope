@@ -147,6 +147,7 @@ function ComparisonDetail({ record, onDelete }: { record: ComparisonRecord; onDe
             comparison={comparison}
             original={record.original}
             improved={record.improved}
+            category={record.category}
           />
         </div>
       </div>

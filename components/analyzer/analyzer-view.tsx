@@ -9,7 +9,8 @@ import { LabeledInput, Select } from "@/components/ui/field";
 import { LoadingLine, Notice } from "@/components/ui/notice";
 import { PromptEditor } from "@/components/ui/prompt-editor";
 import { useToast } from "@/components/ui/toast";
-import { categories, PROMPT_LIMITS, RUBRIC_VERSION, getCategory } from "@/config/app";
+import { categories, categoryGroups, PROMPT_LIMITS, getCategory } from "@/config/app";
+import { getRubricVersionForCategory } from "@/config/evaluation-rubric";
 import { postJson, type ApiError } from "@/lib/api/client";
 import { analyzeRequestSchema, firstIssue } from "@/lib/validation/schemas";
 import { fingerprintPrompt } from "@/lib/scoring/calculate-score";
@@ -65,12 +66,15 @@ export function AnalyzerView() {
     return result.promptHash !== fingerprintPrompt(prompt);
   }, [prompt, result]);
 
+  const rubricVersion = getRubricVersionForCategory(category);
+  const activeCategory = getCategory(category);
+
   async function handleAnalyze() {
     const parsed = analyzeRequestSchema.safeParse({
       prompt,
       title: title || undefined,
       category,
-      rubricVersion: RUBRIC_VERSION,
+      rubricVersion,
     });
 
     if (!parsed.success) {
@@ -132,7 +136,7 @@ export function AnalyzerView() {
       <WorkspaceHeader
         title="Prompt Analyzer"
         description="Score a prompt across eight dimensions, with evidence for every weakness and no fabricated findings."
-        meta={<Badge tone="neutral">Rubric {RUBRIC_VERSION}</Badge>}
+        meta={<Badge tone="neutral">Rubric {rubricVersion}</Badge>}
       />
 
       <div className="flex flex-col gap-10 py-9 sm:pt-10">
@@ -208,13 +212,23 @@ export function AnalyzerView() {
                     id="analyzer-category"
                     value={category}
                     onChange={(event) => setCategory(event.target.value)}
+                    aria-describedby="analyzer-category-hint"
                   >
-                    {categories.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
+                    {categoryGroups.map((group) => (
+                      <optgroup key={group.id} label={group.label}>
+                        {categories
+                          .filter((item) => item.group === group.id)
+                          .map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.label}
+                            </option>
+                          ))}
+                      </optgroup>
                     ))}
                   </Select>
+                  <p id="analyzer-category-hint" className="mt-1.5 text-[11px] leading-[1.45] text-ink-3">
+                    {activeCategory.description} Rubric <span className="font-mono">{rubricVersion}</span>.
+                  </p>
                 </div>
               </div>
 
@@ -322,7 +336,7 @@ export function AnalyzerView() {
               <EvaluationResults
                 snapshot={result}
                 title={title || undefined}
-                category={category}
+                category={activeCategory.label}
                 originalPrompt={prompt}
                 onAnalyzeAgain={handleAnalyze}
                 onImprove={() =>

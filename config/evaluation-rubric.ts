@@ -1,6 +1,18 @@
 import type { DimensionKey } from "@/types/evaluation";
+import {
+  getEvaluationDimensions as getDomainEvaluationDimensions,
+  getRubricVersion as getDomainRubricVersion,
+} from "@/config/domains";
 
 export const RUBRIC_VERSION = "visual-uiux-v1";
+
+export type EvaluationDimension = {
+  key: DimensionKey;
+  label: string;
+  short: string;
+  description: string;
+  guidance: string;
+};
 
 export const evaluationDimensions = [
   {
@@ -67,18 +79,31 @@ export const evaluationDimensions = [
     guidance:
       "Reward a named deliverable, format, level of fidelity, and response structure. Penalize prompts that do not say what the model should return.",
   },
-] as const satisfies ReadonlyArray<{
-  key: DimensionKey;
-  label: string;
-  short: string;
-  description: string;
-  guidance: string;
-}>;
+] as const satisfies ReadonlyArray<EvaluationDimension>;
 
 export const dimensionKeys = evaluationDimensions.map((dimension) => dimension.key);
 
-export function getDimension(key: DimensionKey) {
-  return evaluationDimensions.find((dimension) => dimension.key === key) ?? evaluationDimensions[0];
+/**
+ * Every category keeps the same eight evaluation axis keys so stored history
+ * stays comparable, but each domain supplies its own label, description, and
+ * scoring guidance for those axes.
+ */
+export function getEvaluationDimensions(category?: string): EvaluationDimension[] {
+  if (!category) return evaluationDimensions.map((dimension) => ({ ...dimension }));
+  return getDomainEvaluationDimensions(category);
+}
+
+export function getDimension(key: DimensionKey, category?: string): EvaluationDimension {
+  const dimensions = getEvaluationDimensions(category);
+  return dimensions.find((dimension) => dimension.key === key) ?? dimensions[0]!;
+}
+
+export function getDimensionLabel(key: DimensionKey, category?: string) {
+  return getDimension(key, category).label;
+}
+
+export function getRubricVersionForCategory(category?: string) {
+  return getDomainRubricVersion(category);
 }
 
 export const severityGuidance = [

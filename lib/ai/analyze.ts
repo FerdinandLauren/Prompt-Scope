@@ -1,5 +1,5 @@
 import "server-only";
-import { RUBRIC_VERSION } from "@/config/app";
+import { getRubricVersionForCategory } from "@/config/evaluation-rubric";
 import { getDimension } from "@/config/evaluation-rubric";
 import { getAiStatus } from "@/lib/ai/client";
 import { heuristicEvaluate } from "@/lib/ai/analyzer/heuristic";
@@ -27,7 +27,7 @@ export async function analyzePrompt(
     return heuristicEvaluate({
       prompt,
       category,
-      rubricVersion,
+      rubricVersion: rubricVersion || getRubricVersionForCategory(category),
       title,
       id: crypto.randomUUID(),
     });
@@ -35,8 +35,8 @@ export async function analyzePrompt(
 
   const { data, model } = await callStructured(
     {
-      systemInstruction: buildAnalysisInstruction(),
-      userPrompt: buildAnalysisPrompt({ prompt, category, title }),
+      systemInstruction: buildAnalysisInstruction(category),
+      userPrompt: buildAnalysisPrompt({ prompt, category, title, rubricVersion }),
       schema: evaluationResponseSchema,
       temperature: 0.2,
       maxOutputTokens: 4096,
@@ -57,7 +57,7 @@ export async function analyzePrompt(
 
   const dimensionDetails = data.dimensions.map((dimension) => ({
     key: dimension.key,
-    label: getDimension(dimension.key).label,
+    label: getDimension(dimension.key, category).label,
     score: dimension.score,
     explanation: dimension.explanation,
   }));
@@ -65,7 +65,7 @@ export async function analyzePrompt(
   return {
     id: crypto.randomUUID(),
     overallScore: calculateOverallScore(dimensions),
-    rubricVersion: rubricVersion || RUBRIC_VERSION,
+    rubricVersion: rubricVersion || getRubricVersionForCategory(category),
     category,
     createdAt: new Date().toISOString(),
     source: "live",

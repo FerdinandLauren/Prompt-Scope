@@ -14,8 +14,9 @@ import { ThemeSegmentedControl } from "@/components/theme/theme-toggle";
 import { useAiStatus } from "@/hooks/use-ai-status";
 import { useSessions } from "@/hooks/use-sessions";
 import { useComparisons } from "@/hooks/use-comparisons";
-import { APP_VERSION, RUBRIC_VERSION } from "@/config/app";
+import { APP_VERSION } from "@/config/app";
 import { evaluationDimensions } from "@/config/evaluation-rubric";
+import { categories, categoryGroups } from "@/config/domains";
 import { clearSessions } from "@/lib/storage/prompt-storage";
 import { clearComparisons } from "@/lib/storage/comparison-storage";
 import { clearPendingPrompt } from "@/lib/storage/pending-prompt";
@@ -97,16 +98,19 @@ export function SettingsView() {
               <div className="mt-1.5 font-mono text-[12px] text-ink-2">{status.model ?? "not configured"}</div>
             </div>
             <div className="bg-bg-raised px-4 py-4">
-              <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Rubric</div>
-              <div className="mt-1.5 font-mono text-[12px] text-ink-2">{RUBRIC_VERSION}</div>
+              <div className="font-mono text-[8.5px] uppercase tracking-[0.12em] text-ink-3">Rubric profiles</div>
+              <div className="mt-1.5 font-mono text-[12px] text-ink-2">
+                {categoryGroups.length} families · {categories.length} categories
+              </div>
             </div>
           </div>
           <div className="border-t border-line-soft px-4 py-4">
             <p className="max-w-[86ch] text-[12px] leading-[1.65] text-ink-2">
-              Live mode sends your prompt to Google Gemini through a server-side route. Whichever key is active — the
-              server environment variable or the browser key you saved above — it is read only on the server for that
-              request. Demo Mode evaluates prompts locally with a deterministic rule engine and labels every result as
-              demo data.
+              Live mode sends your idea, prompt, or revision to Google Gemini through a server-side route. Whichever key
+              is active — the server environment variable or the browser key you saved above — it is read only on the
+              server for that request. Demo Mode evaluates prompts locally with a deterministic rule engine and labels
+              every result as demo data. The rubric adapts to the selected category: the eight axis keys stay stable, but
+              their labels, descriptions, and scoring guidance change with the domain.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button

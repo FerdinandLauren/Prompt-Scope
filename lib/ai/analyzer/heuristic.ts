@@ -1,4 +1,4 @@
-import { evaluationDimensions, getScoreBand } from "@/config/evaluation-rubric";
+import { getEvaluationDimensions, getScoreBand } from "@/config/evaluation-rubric";
 import type {
   DimensionKey,
   DimensionScore,
@@ -7,7 +7,7 @@ import type {
   Strength,
 } from "@/types/evaluation";
 import { calculateOverallScore, fingerprintPrompt } from "@/lib/scoring/calculate-score";
-import { RUBRIC_VERSION } from "@/config/app";
+import { getCategory, getMissingChecks, getRubricVersion as getCategoryRubricVersion } from "@/config/domains";
 
 type Signal = { pattern: RegExp; label: string; weight: number };
 
@@ -133,6 +133,158 @@ const rules: Record<DimensionKey, Rule> = {
   },
 };
 
+type DomainRuleOverrides = Partial<Record<DimensionKey, Rule>>;
+
+const domainRules: Record<string, DomainRuleOverrides> = {
+  software: {
+    visual_direction: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(architecture|layer|module|service|boundary|monolith|microservice|framework|stack|monorepo)\b/gi, label: "an architecture decision", weight: 14 },
+        { pattern: /\b(react|next\.?js|node|typescript|python|laravel|django|postgres|mysql|prisma|supabase)\b/gi, label: "named technology", weight: 12 },
+        { pattern: /\b(component|repository|store|context|hook|route|controller|middleware)\b/gi, label: "implementation structure", weight: 11 },
+        { pattern: /\b(trade-?off|constraint|existing|preserve|compatib|migration)\b/gi, label: "existing constraints", weight: 10 },
+      ],
+      missing: "no system structure or technology constraints are described",
+      suggestion: "Name the layers, the existing stack, the boundaries to preserve, and the trade-off behind the chosen approach.",
+    },
+    composition: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(data model|schema|entity|entities|table|field|relationship|foreign key)\b/gi, label: "a data model", weight: 14 },
+        { pattern: /\b(api|endpoint|request|response|contract|payload|status code)\b/gi, label: "an API contract", weight: 13 },
+        { pattern: /\b(state|store|cache|session|query|mutation)\b/gi, label: "state ownership", weight: 10 },
+        { pattern: /\b(integration|webhook|sync|job|queue|third[- ]party)\b/gi, label: "integration behaviour", weight: 10 },
+      ],
+      missing: "the data model, API contract, and state ownership are not specified",
+      suggestion: "Define the core entities, the request/response contract, who owns each piece of state, and what happens when an integration fails.",
+    },
+    typography: {
+      baseline: 20,
+      signals: [
+        { pattern: /\b(auth|authentication|authorization|permission|role|session|token)\b/gi, label: "an access model", weight: 13 },
+        { pattern: /\b(validation|validate|sanitize|reject|constraint)\b/gi, label: "input validation", weight: 11 },
+        { pattern: /\b(error|exception|fallback|retry|timeout|failure|edge case)\b/gi, label: "failure handling", weight: 12 },
+        { pattern: /\b(test|unit test|integration test|lint|type ?check|build)\b/gi, label: "verification", weight: 12 },
+        { pattern: /\b(log|monitor|observability|audit|alert)\b/gi, label: "observability", weight: 8 },
+      ],
+      missing: "there is no security, failure, or verification model",
+      suggestion: "Add authorization rules, validation, error and retry behaviour, logging, and the exact checks that prove the work.",
+    },
+  },
+  ai_data: {
+    visual_direction: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(model|llm|retrieval|rag|embedding|classifier|regression|baseline)\b/gi, label: "a named method", weight: 14 },
+        { pattern: /\b(approach|method|strategy|prompt|fine[- ]tun|training|algorithm)\b/gi, label: "an analytical approach", weight: 12 },
+        { pattern: /\b(metric|accuracy|precision|recall|f1|latency|cost|confidence)\b/gi, label: "a quality target", weight: 11 },
+        { pattern: /\b(fallback|human review|escalation|threshold|uncertainty)\b/gi, label: "a fallback path", weight: 10 },
+      ],
+      missing: "no AI or analytical method is defined",
+      suggestion: "Name the method, the baseline it must beat, the quality target, and what happens when confidence is low.",
+    },
+    composition: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(data source|dataset|warehouse|documents?|api|table|csv|pdf|database)\b/gi, label: "a data source", weight: 14 },
+        { pattern: /\b(clean|prepare|join|missing|duplicate|leakage|split|preprocess)\b/gi, label: "data preparation", weight: 12 },
+        { pattern: /\b(evaluation|test set|validation|metric|benchmark|human review)\b/gi, label: "an evaluation method", weight: 13 },
+        { pattern: /\b(freshness|ownership|retention|lineage|version)\b/gi, label: "data governance", weight: 9 },
+      ],
+      missing: "the data sources, preparation, and evaluation method are not defined",
+      suggestion: "List the sources and owners, how the data is prepared, the evaluation set, and the metric that decides success.",
+    },
+    typography: {
+      baseline: 20,
+      signals: [
+        { pattern: /\b(privacy|pii|personal data|confidential|retention|redact)\b/gi, label: "privacy handling", weight: 13 },
+        { pattern: /\b(guardrail|injection|refusal|safe|policy|moderation)\b/gi, label: "safety controls", weight: 12 },
+        { pattern: /\b(fallback|failure|low confidence|escalation|timeout|rate limit)\b/gi, label: "failure handling", weight: 12 },
+        { pattern: /\b(cost|latency|token|budget|monitor|log)\b/gi, label: "operating limits", weight: 10 },
+      ],
+      missing: "privacy, safety, failure, and cost limits are not addressed",
+      suggestion: "Add data handling rules, guardrails, low-confidence behaviour, and measurable cost and latency limits.",
+    },
+  },
+  business: {
+    visual_direction: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(stakeholder|owner|department|role|manager|approver)\b/gi, label: "named stakeholders", weight: 14 },
+        { pattern: /\b(as[- ]is|to[- ]be|current process|target process|handoff|step)\b/gi, label: "a current and target process", weight: 14 },
+        { pattern: /\b(bottleneck|delay|rework|pain|waiting|cost)\b/gi, label: "a named problem", weight: 11 },
+        { pattern: /\b(policy|control|compliance|risk|audit)\b/gi, label: "governance context", weight: 9 },
+      ],
+      missing: "stakeholders and the current process are not described",
+      suggestion: "Name the roles, map the as-is steps and handoffs, and state which bottleneck the change must fix.",
+    },
+    composition: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(rule|threshold|limit|condition|exception|policy)\b/gi, label: "business rules", weight: 14 },
+        { pattern: /\b(approval|authority|escalation|owner|sign[- ]off)\b/gi, label: "approval authority", weight: 12 },
+        { pattern: /\b(handoff|sequence|step|workflow|process)\b/gi, label: "process sequence", weight: 11 },
+        { pattern: /\b(exception|edge case|fallback|override)\b/gi, label: "exception handling", weight: 10 },
+      ],
+      missing: "rules, approvals, and exceptions remain implicit",
+      suggestion: "Write each rule as a testable condition with an owner, an approval threshold, and an exception path.",
+    },
+    typography: {
+      baseline: 20,
+      signals: [
+        { pattern: /\b(measure|metric|kpi|cycle time|cost|error rate|rework|satisfaction)\b/gi, label: "success measures", weight: 14 },
+        { pattern: /\b(baseline|before|after|target|target state)\b/gi, label: "a baseline", weight: 11 },
+        { pattern: /\b(acceptance|sign[- ]off|evidence|audit|report)\b/gi, label: "acceptance evidence", weight: 12 },
+        { pattern: /\b(risk|control|mitigation|owner)\b/gi, label: "risks and controls", weight: 10 },
+      ],
+      missing: "success measures and acceptance evidence are not defined",
+      suggestion: "Define a baseline and a target for the outcome, then state who accepts the result and on what evidence.",
+    },
+  },
+  content: {
+    visual_direction: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(audience|reader|customer|developer|team|public|persona)\b/gi, label: "a named reader", weight: 14 },
+        { pattern: /\b(tone|voice|formal|conversational|neutral|playful|authoritative)\b/gi, label: "voice direction", weight: 12 },
+        { pattern: /\b(action|take away|call to action|understand|believe|trust)\b/gi, label: "a communication objective", weight: 12 },
+        { pattern: /\b(brand|terminology|jargon|reading level|style guide)\b/gi, label: "language constraints", weight: 9 },
+      ],
+      missing: "the reader and communication objective are not defined",
+      suggestion: "Name one primary reader, what they already know, and the single action or belief the piece must produce.",
+    },
+    composition: {
+      baseline: 22,
+      signals: [
+        { pattern: /\b(outline|section|structure|opening|introduction|conclusion)\b/gi, label: "a content structure", weight: 14 },
+        { pattern: /\b(evidence|source|citation|example|proof|data)\b/gi, label: "evidence requirements", weight: 13 },
+        { pattern: /\b(key message|main point|argument|sequence)\b/gi, label: "a key message", weight: 11 },
+        { pattern: /\b(call to action|next step|link|sign[- ]up)\b/gi, label: "a call to action", weight: 9 },
+      ],
+      missing: "structure and supporting evidence are left entirely open",
+      suggestion: "Specify the outline, the key message of each section, the proof points, and the closing action.",
+    },
+    typography: {
+      baseline: 20,
+      signals: [
+        { pattern: /\b(words?|word count|length|reading time|short|long)\b/gi, label: "a length target", weight: 12 },
+        { pattern: /\b(format|channel|article|guide|script|landing page|email|presentation)\b/gi, label: "a format", weight: 12 },
+        { pattern: /\b(readab|legib|heading|subheading|bullet|scan)\b/gi, label: "readability guidance", weight: 10 },
+        { pattern: /\b(cite|source|do not invent|no unverified|factual|accuracy)\b/gi, label: "factual constraints", weight: 11 },
+      ],
+      missing: "format, length, and factual limits are not specified",
+      suggestion: "Define the format, an appropriate length range, readability expectations, and the rule for unverified claims.",
+    },
+  },
+};
+
+function rulesFor(category: string): Record<DimensionKey, Rule> {
+  const family = getCategory(category).family;
+  const overrides = domainRules[family];
+  return overrides ? { ...rules, ...overrides } : rules;
+}
+
 const conflictPairs: Array<{ a: RegExp; b: RegExp; message: string }> = [
   { a: /\bminimal(ist|ism)?\b/i, b: /\b(ornate|maximalist|opulent|richly decorated)\b/i, message: "The prompt asks for both a minimal and an ornate treatment." },
   { a: /\bdark\b/i, b: /\b(bright white|light background|white background)\b/i, message: "A dark treatment and a bright white background are requested together." },
@@ -141,28 +293,6 @@ const conflictPairs: Array<{ a: RegExp; b: RegExp; message: string }> = [
   { a: /\bmonochrome\b/i, b: /\b(colourful|colorful|vibrant palette|many colours|many colors)\b/i, message: "A monochrome palette and a colourful palette are requested together." },
   { a: /\bdense\b/i, b: /\b(spacious|generous whitespace|airy)\b/i, message: "A dense layout and generous whitespace are requested together." },
   { a: /\bstatic\b/i, b: /\b(animated|animation|motion-heavy)\b/i, message: "A static result and animation are requested together." },
-];
-
-const missingChecks: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /\b(audience|users?|customers?|team|persona|operations leads)\b/i, label: "Target audience" },
-  { pattern: /\b(objective|goal|purpose|so that|in order to|because|used for|helps?|review)\b/i, label: "Project purpose and context" },
-  {
-    pattern:
-      /\b(colou?rs?|palette|tone|hue|charcoal|orange|amber|yellow|pink|red|green|blue|purple|teal|neutrals?|monochrome|dark|light|white|black|bright|warm|cool|accent)\b/i,
-    label: "Colour direction",
-  },
-  {
-    pattern: /\b(typeface|font|typograph|grotesk|monospace|serif|sans[- ]serif|type scale)\b/i,
-    label: "Typography requirements",
-  },
-  {
-    pattern: /\b(grid|layout|composition|spacing|hierarchy|alignment|focal|reading order|whitespace)\b/i,
-    label: "Layout and hierarchy expectations",
-  },
-  { pattern: /\b(responsive|mobile|tablet|breakpoint|360px)\b/i, label: "Responsive behaviour" },
-  { pattern: /\b(accessible|accessibility|contrast|wcag|focus ring|keyboard)\b/i, label: "Accessibility requirements" },
-  { pattern: /\b(return|output|format|deliverable|deliver|section by section|rationale)\b/i, label: "Expected output format" },
-  { pattern: /\b(must|avoid|do not|don't|never|limit|only)\b/i, label: "Explicit constraints" },
 ];
 
 const evidenceDimensions = new Set<DimensionKey>([
@@ -190,7 +320,7 @@ export type HeuristicInput = {
 export function heuristicEvaluate({
   prompt,
   category,
-  rubricVersion = RUBRIC_VERSION,
+  rubricVersion = getCategoryRubricVersion(category),
   now = new Date(),
   id,
 }: HeuristicInput): EvaluationSnapshot {
@@ -198,9 +328,15 @@ export function heuristicEvaluate({
   const words = text.split(/\s+/).filter(Boolean);
   const wordCount = words.length;
   const brevityPenalty = wordCount < 35 ? 18 : wordCount < 70 ? 8 : 0;
+  const dimensionsForCategory = getEvaluationDimensions(category);
+  const activeRules = rulesFor(category);
+  const missingChecks = getMissingChecks(category).map((check) => ({
+    pattern: new RegExp(check.pattern, "i"),
+    label: check.label,
+  }));
 
-  const dimensionDetails: DimensionScore[] = evaluationDimensions.map((dimension) => {
-    const rule = rules[dimension.key];
+  const dimensionDetails: DimensionScore[] = dimensionsForCategory.map((dimension) => {
+    const rule = activeRules[dimension.key];
     const found: string[] = [];
     const absent: string[] = [];
     let points = 0;
@@ -264,7 +400,7 @@ export function heuristicEvaluate({
     .sort((a, b) => a.score - b.score)
     .slice(0, 5)
     .map((dimension) => {
-      const rule = rules[dimension.key];
+      const rule = activeRules[dimension.key];
       const severity = dimension.score < 40 ? "high" : dimension.score < 58 ? "medium" : "low";
       const found = rule.signals
         .filter((signal) => new RegExp(signal.pattern.source, "i").test(text))

@@ -1,6 +1,12 @@
 import type { GeneratedPrompt, PromptConfiguration } from "@/types/prompt";
+import { CATEGORY_IDS, type CategoryId } from "@/config/domains";
 
 const PENDING_KEY = "promptscope.pending.v1";
+
+function isCategoryId(value: unknown): value is CategoryId {
+  return typeof value === "string" && (CATEGORY_IDS as readonly string[]).includes(value);
+}
+
 
 export const PENDING_PROMPT_KEY = PENDING_KEY;
 
@@ -33,7 +39,7 @@ export function readPendingPrompt(): PendingPrompt | null {
     return {
       prompt: parsed.prompt,
       title: parsed.title ?? "Untitled prompt",
-      category: parsed.category === "visual_design" ? "visual_design" : "ui_ux",
+      category: isCategoryId(parsed.category) ? parsed.category : "ui_ux",
       configuration: parsed.configuration,
       generated: parsed.generated,
       sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,

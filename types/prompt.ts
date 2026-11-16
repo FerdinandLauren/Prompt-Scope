@@ -1,5 +1,6 @@
 import type { CategoryId } from "@/config/app";
 import type { EvaluationSnapshot } from "@/types/evaluation";
+import type { ProjectBrief, PromptDepth, TargetAgentId } from "@/types/guided";
 
 export type SliderKey =
   | "creativity"
@@ -22,6 +23,10 @@ export type PromptConfiguration = {
   outputRequirements: string[];
   constraints: string[];
   sliders: PromptSliders;
+  /** Guided Mode additions; optional so stored sessions stay valid. */
+  depth?: PromptDepth;
+  targetAgent?: TargetAgentId;
+  brief?: ProjectBrief;
 };
 
 export type GeneratedPromptSection = {
@@ -38,6 +43,8 @@ export type GeneratedPrompt = {
   assumptions: string[];
   recommendations: string[];
   source: "live" | "demo" | "draft";
+  depth?: PromptDepth;
+  targetAgent?: TargetAgentId;
 };
 
 export type PromptVersionSource = "generated" | "manual" | "improved" | "restored";

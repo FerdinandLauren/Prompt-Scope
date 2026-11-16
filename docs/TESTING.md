@@ -5,16 +5,21 @@ Verified 16 November 2026. Every number below came from a command that was actua
 ## 1. Automated tests
 
 ```bash
-npm test        # vitest, 184 tests, 18 files
+npm test        # vitest, 256 tests, 22 files
 npm run typecheck
 npm run lint
+npm run build
 ```
 
 | Suite | File | Tests | What it proves |
 |---|---|---|---|
+| Domain configuration | `tests/config/domains.test.ts` | 23 | Exactly 20 categories in 5 groups, unique ids and labels, every family mapped to its rubric version, the same eight axis keys everywhere, renames applied without changing keys, 4 ordered depths, 7 agent profiles, coding-agent inspection/plan/verification/report and no unrequested git or deploy, non-empty section templates and seeds. |
+| Guided discovery | `tests/ai/discovery.test.ts` | 17 | Discovery is deterministic and demo-labelled; one question per turn with a reason; design/software/content/Indonesian detection; explicit category override; no repeated questions; soft-budget stop; unknown → labelled recommendation with matching trade-offs; assumptions persist after the interview moves on; skipped answers stay out of requirements; uncertainty is routed to ambiguities; unresolved areas become open questions. |
+| Draft composition | `tests/ai/draft-depth.test.ts` | 10 | Draft output is labelled `draft`; increasing depth adds length without duplicate headings; concise omits open questions and detailed adds them plus an uncertainty policy; assumptions are provisional at every depth; coding drafts contain inspection, plan, implementation rules, verification and final report; design drafts adapt the working agreement; concise coding triggers a depth recommendation. |
+| Builder draft storage | `tests/storage/builder-draft.test.ts` | 11 | Default draft shape; round-trip of mode, configuration, guided step, idea, budget, depth, agent, brief and confirmation; corrupt data degrades to defaults; out-of-range values are repaired; stable snapshot identity for `useSyncExternalStore`; clear removes both storage and cache; sanitisation of unknown depth/agent; brief → configuration carries objective, audience, context, depth, agent and brief. |
 | Scoring | `tests/scoring/calculate-score.test.ts` | 10 | Overall score = mean of the eight dimensions, rounded; out-of-range or non-finite values throw instead of being clamped; fingerprints are stable across whitespace and line endings. |
 | Comparison | `tests/scoring/compare-scores.test.ts` | 7 | Deltas equal `improved − original` per dimension; declines and unchanged dimensions are reported as measured; rubric and category mismatches are flagged, not compared; the displayed overall change equals the difference of the rounded overalls. |
-| Request validation | `tests/validation/schemas.test.ts` | 14 | Objective is required with a floor; slugs are constrained; slider values must be whole numbers in 0–100 with all eight keys present; list caps hold; a browser-supplied `overallScore` is dropped rather than trusted. |
+| Request validation | `tests/validation/schemas.test.ts` | 25 | Objective is required with a floor; all 20 categories accepted; optional depth/agent/brief keep legacy payloads valid; unknown depth/agent rejected; brief requires sections and a real objective, rejects unknown sources/categories, defaults assumptions and unknowns; discovery accepts accumulated answers, defaults answers, bounds the budget and answer count, rejects unknown statuses, and rejects short or overlong ideas; a browser-supplied `overallScore` is dropped rather than trusted. |
 | Analyzer engine | `tests/ai/heuristic-analyzer.test.ts` | 13 | All eight dimensions return integers in range; overall score matches the shared formula; evaluation is deterministic; ordering holds (vague < average < structured); brevity is penalised; repeated signal words cannot reach a perfect score. |
 | Evidence honesty | `tests/ai/evidence.test.ts` | 4 | A well-specified prompt yields no fabricated weakness; quoted evidence is verbatim from the prompt; no evidence is attached when the prompt contains no vague wording; a "detected but thin" dimension never claims the signal is missing. |
 | Live provider | `tests/ai/live-provider.test.ts` | 15 | Live mode is detected without exposing the key; the request uses structured JSON with a schema and the rubric; the server computes the overall score even when the model returns its own; a malformed response triggers exactly one retry with corrective feedback; an empty response, a 429, a rejected key and a missing model each map to a distinct, non-leaking error. |
@@ -31,12 +36,16 @@ npm run lint
 | Settings integration | `tests/ui/browser-key-settings.test.ts` | 6 | The key header is attached to `/api/ai/*` only, never third-party URLs; extra headers are preserved; source copy distinguishes server, browser and demo. |
 | Theme tokens | `tests/ui/theme-tokens.test.ts` | 16 | Both blocks define every semantic token; light is genuinely light; foreground/background pairs clear WCAG AA in both themes. |
 
-**Result:** 184 passed / 184. TypeScript: no errors. ESLint: no errors or warnings.
+**Result:** 256 passed / 256. TypeScript: no errors. ESLint: no errors or warnings. Production build: clean, including `/api/ai/discover`.
 
 Two defects were found by these tests and fixed rather than worked around:
 
 1. A non-JSON model response threw before the recovery retry could run.
 2. Raw provider text was retained in the thrown error message; it is now kept in a separate `detail` field used only for server logs.
+
+During the guided work the discovery tests also caught an unknown answer being replaced by a generic
+"Not decided yet" once the interview advanced; the seed recommendation now persists, and uncertainty
+clauses are excluded from explicit requirements.
 
 ## 2. End-to-end flow checks (headless Chromium)
 
@@ -44,6 +53,8 @@ Run with `node scripts/qa-<name>.mjs` against `npm run dev`.
 
 | Script | Flow verified | Result |
 |---|---|---|
+| `qa-guided-flow.mjs` | Guided default tab; sample fill; discovery; unknown → recommendation → accepted assumption; interview to brief; provenance labels and open questions; depth and coding-agent selection; generated prompt with demo badge, outline, 58 section-copy buttons; save dialog; Guided ↔ Advanced switching that preserves the objective and generated work; analyzer handoff with domain labels; 390 px mobile pass. | Pass, zero console errors, no horizontal overflow |
+| `qa-guided-live.mjs` | Live status; live discovery call (one turn); live generation; guided UI showing the live badge and a real question. | Pass once the provider answered; earlier attempts returned provider 429/504 and the UI fell back with labels |
 | `qa-builder-flow.mjs` | Empty submit is blocked and focused; preset applies exact values; chips toggle; generate produces a structured prompt; mobile has no overflow; a slider is operable from the keyboard. | Pass, no console errors |
 | `qa-analyzer-flow.mjs` | Analyze is disabled until input is valid; sample loads; all result sections render; DEMO DATA badge present. | Pass |
 | `qa-analyzer-cases.mjs` | A contradictory brief reports contradictions; a structured brief does not. | 4 contradictions detected in the conflicting brief, 0 in the clean one |
@@ -56,6 +67,32 @@ Run with `node scripts/qa-<name>.mjs` against `npm run dev`.
 | `qa-final-visuals.mjs` | Seeds a session, an improved version and a comparison, then captures both themes plus generated builder and populated analyzer screens. | Screenshots consistent across themes; seeded store reports 1 session and 1 comparison |
 | `qa-axe-a11y.mjs` | axe-core (WCAG 2.0/2.1 A + AA) on all seven routes in dark and light. | 0 violations across 14 runs |
 | `qa-settings-key-flow.mjs` | Settings key panel: reveal, remember warning, synthetic-key rejection, blank-submit guard, privacy copy. | Synthetic key is rejected and not retained in either storage; warning appears only after opt-in; blank submit is disabled |
+
+### Guided-flow evidence in detail
+
+`qa-guided-flow.mjs` reported, step by step:
+
+| Step | Observed |
+|---|---|
+| Initial | Guided tab selected, idea field present, question-budget select present, step rail shows Questions and Brief |
+| Sample fill | Idea length 97 characters |
+| Discovery | Question 1 rendered, understanding panel shown, demo label shown |
+| Recommendation | "PromptScope recommends" shown after **I don't know**; **Keep this assumption** accepted it |
+| Interview | 2 answers, then brief ready (budget 5) |
+| Brief | Visible, `Your input` label, `Assumption` label, `Open questions` present |
+| Tuning | Four depth options and seven agent options rendered; Detailed and Coding selected |
+| Output | Generated; source label present; DEMO DATA notice; Detailed depth badge; Coding / Software Agent badge; outline; Repository Inspection, Verification and Final Report sections; 22,391 characters of page text |
+| Copy | 58 `Copy section` buttons; Markdown export present |
+| Save | Dialog opened |
+| Mode switch | Advanced visible, objective preserved, Guided hidden; switching back preserved the generated prompt |
+| Analyzer handoff | Notice shown, prompt loaded, backend category labelled |
+| Analysis | Dimensions, `visual-uiux-v1` rubric, design labels, weaknesses and missing information all rendered with the demo badge |
+| Mobile | `scrollWidth` 390 at `innerWidth` 390; guided copy visible |
+
+`qa-guided-live.mjs` separately confirmed `mode: "live"` with `gemini-3.6-flash`, a live discovery turn
+(`source: "live"`, ~78 s), and a live generation (`source: "live"`, 4,508 characters, 11 sections,
+balanced depth, design agent, no placeholder text). The first attempt returned provider 429/504; the UI
+surfaced the failure and fell back to labelled demo output rather than pretending it was live.
 
 ## 3. Accessibility
 
@@ -97,6 +134,10 @@ rule sat above Tailwind's utility layer, so primary links (dashboard, empty stat
 body colour instead of `--on-accent` and measured 1.87:1 on orange in dark mode, 3.4:1 in light. The
 rule was removed — Tailwind preflight already handles anchor colour — and the scan is clean.
 
+The same scan, re-run after the guided builder landed, caught a second real defect: the active step
+number used `text-orange` on the light accent background and measured **4.44:1** at 9px, just under AA.
+It now uses `text-ink`, and the re-run reports 0 violations across 14 route/theme combinations.
+
 ## 4. Security
 
 | Check | Command | Result |
@@ -116,9 +157,11 @@ rule was removed — Tailwind preflight already handles anchor colour — and th
 |---|---|
 | `GET /api/ai/status` | `{ mode: "demo", configured: false, source: "none", model: null }` without a key; `{ mode: "live", configured: true, source: "environment" }` with one; `source: "browser"` when the request carries a usable `x-promptscope-api-key` header |
 | `POST /api/ai/verify` | `{ model, source }` (plus `slow: true` when only the test generation timed out) when the provider answers; `missing_api_key`, `invalid_api_key` or `model_unavailable` for a configuration problem; the key is never in the response |
-| `POST /api/ai/generate` | Structured prompt, `source: "demo"` |
-| `POST /api/ai/analyze` | Eight dimensions, server-calculated overall, weaknesses, contradictions |
+| `POST /api/ai/discover` | `{ source: "demo" }` in Demo Mode with one question and a brief; `{ source: "live" }` with a real Gemini turn; provider timeout returns a labelled error so the client falls back to demo discovery |
+| `POST /api/ai/generate` | Structured prompt, `source: "demo"` in Demo Mode or `"live"` with a key; `depth` and `targetAgent` echoed back |
+| `POST /api/ai/analyze` | Eight dimensions, server-calculated overall, weaknesses, contradictions, domain-labelled dimensions |
 | `POST /api/ai/analyze` with a 5-character prompt | `400 invalid_request` with a field message |
+| `POST /api/ai/analyze` with more than 40,000 characters | `400 invalid_request`; the limit is shared with the client editor |
 | 13th request inside a minute | `429 throttled` with a retry message — the limiter was proven by a test run hitting it |
 
 ## 6. Calibration evidence for Demo Mode
@@ -137,8 +180,15 @@ Ordering is monotonic and no dimension reaches 100 from repetition alone.
 
 - Scores are model-assisted diagnostics; the same prompt can score differently across runs or models.
 - Demo Mode reasons over keywords and structure, so its explanations are pattern-driven, not semantic.
-- History, versions and comparisons live in `localStorage` of one browser profile; there is no cloud sync.
-- Only the Visual Design and UI/UX categories are implemented.
-- Live availability depends on the provider, the account quota and the configured model.
+  Its guided interview is scripted from a seeded question bank rather than generated semantically.
+- The guided interview is adaptive within a bounded seed set. It cannot know facts that were never
+  described, and it records assumptions rather than verifying them.
+- Coding-agent prompts ask an agent to inspect, plan, verify and report; PromptScope does not run code,
+  tests, migrations or deployments.
+- History, versions, builder drafts and comparisons live in `localStorage` of one browser profile; there
+  is no cloud sync.
+- Live availability depends on the provider, the account quota and the configured model. Live discovery
+  and generation can take 30–90 seconds and may fail; fallbacks are labelled.
+- Prompt text sent to the analyzer is capped at 40,000 characters.
 - The rate limiter is per process; a multi-instance deployment should also rely on platform-level limits.
 - Route handlers are covered through module-level tests plus live HTTP checks rather than an automated server harness.

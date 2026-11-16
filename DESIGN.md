@@ -74,6 +74,37 @@ Colour budget: under ~5% of a screen. Orange is reserved for the primary action 
 - **Weaknesses:** indexed rows with severity text tags (`HIGH`, `MEDIUM`, `LOW`) and evidence set in a quieter mono block.
 - **Charts:** thin 1px lines, faint radial grid, 0–100 fixed scale, original = dashed rose, improved = solid orange with 10% fill. Tooltip is a plain bordered box. Text scores always accompany the chart.
 
+## Guided builder surfaces
+
+The guided flow must not look like a wizard made of unrelated cards. It is one continuous sheet that
+changes state, on the same 1240px column as the rest of the builder.
+
+- **Step rail** — five short mono labels (Idea, Questions, Brief, Tuning, Prompt) with a hairline
+  connector. The current step uses `--ink`; completed steps use `--ink-2`; future steps stay `--ink-3`.
+  No checkmark confetti.
+- **Understanding panel** — a quiet `--surface` block with labelled rows for domain, complexity,
+  requirements, ambiguities and missing information. It is evidence, so it reads like instrument output,
+  not a chat bubble.
+- **Interview** — exactly one question in large body type, a "Why this matters" line in `--ink-2`, then
+  suggestion chips and a free-text field. **I don't know** and **Skip** are secondary text actions, never
+  the primary fill. A recommendation appears inline with a recommendation label, rationale, and two
+  trade-off lines before it can be accepted.
+- **Provenance labels** — `Your input`, `Assumption`, `Recommendation` are small mono tags attached to the
+  section they describe. They are never condensed into colour alone and never shown without a word.
+  Assumptions carry an explicit "confirm or replace this assumption" sentence in the content itself.
+- **Brief editor** — each section is an editable textarea with its heading and provenance tag; open
+  questions sit in a separate, visually quieter block. Confirm is a full-width primary action only after
+  the user has seen the brief.
+- **Tuning** — two radio groups (depth, agent) rendered as selectable rows with a short description and a
+  "Recommended" tag where applicable. Radios, not cards with hidden state.
+- **Prompt workspace** — the prompt is the page. Title, source badge, depth/agent badges and character
+  count sit above a two-column read/edit surface: outline on the left (sticky on desktop, collapsible on
+  mobile), prompt sections on the right. Each section has a copy control; copy-all and Markdown export are
+  secondary. A demo or draft badge is always visible, never buried in settings.
+- **Fallback notices** — a failed live call produces an inline notice that names the fallback in plain
+  language ("Demo discovery", "Local draft — not an AI response"), with a retry action. It never silently
+  swaps the source.
+
 ## Motion
 
 - One authored entrance per page: content is visible by default; the result/score reveals with a 220–320ms opacity + 8px rise. No scattered section animations.

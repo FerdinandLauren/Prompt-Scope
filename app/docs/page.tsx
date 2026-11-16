@@ -2,8 +2,9 @@ import Link from "next/link";
 import { PageFrame, PageHeader } from "@/components/layout/page-header";
 import { ModeBadge } from "@/components/system/mode-badge";
 import { Badge } from "@/components/ui/badge";
-import { evaluationDimensions, scoreBands } from "@/config/evaluation-rubric";
-import { PROMPT_LIMITS, RUBRIC_VERSION } from "@/config/app";
+import { getEvaluationDimensions, scoreBands } from "@/config/evaluation-rubric";
+import { PROMPT_LIMITS } from "@/config/app";
+import { categories, categoryGroups, getRubricVersion } from "@/config/domains";
 
 export const metadata = {
   title: "Documentation",
@@ -12,38 +13,44 @@ export const metadata = {
 const workflow = [
   {
     step: "01",
-    title: "Direction",
-    body: "Configure objective, audience, context, visual preferences, output requirements, constraints, and eight focus parameters in the Prompt Builder.",
+    title: "Guided discovery",
+    body: "Describe the idea in plain language. PromptScope asks one focused question at a time, offers an 'I don't know' recommendation with trade-offs, and stops when the brief is strong enough. Demo Mode runs the same interview deterministically.",
   },
   {
     step: "02",
-    title: "Generation",
-    body: "The server composes a structured prompt. In Live mode this is a Gemini call constrained by a JSON schema; in Demo Mode it is composed locally from the same configuration.",
+    title: "Project brief",
+    body: "Review and edit the brief before generation. User input is treated as fact, AI recommendations are marked as assumptions, and unresolved questions stay explicit. Nothing is silently promoted to a confirmed requirement.",
   },
   {
     step: "03",
-    title: "Diagnosis",
-    body: "The Analyzer scores eight dimensions independently. The server calculates the overall score; a model-reported total is never trusted.",
+    title: "Direction or direct control",
+    body: "Guided Mode chooses depth and target agent from the brief. Advanced Mode exposes category, objective, context, preferences, constraints, depth, target agent, and eight focus parameters directly.",
   },
   {
     step: "04",
-    title: "Improvement",
-    body: "The Improver revises the prompt while preserving the original. The revised prompt is re-evaluated under the identical rubric before any comparison is shown.",
+    title: "Generation",
+    body: "The server composes a structured prompt. In Live mode this is a Gemini call constrained by a JSON schema; in Demo Mode the same structure is composed locally and labelled as demo data.",
   },
   {
     step: "05",
-    title: "Comparison",
-    body: "Both snapshots are stored separately. The radar chart and dimension table plot the real scores, including declines and unchanged dimensions.",
+    title: "Diagnosis",
+    body: "The Analyzer scores eight stable dimensions under a category-specific rubric profile. The server calculates the overall score; a model-reported total is never trusted, and length alone never raises a score.",
   },
   {
     step: "06",
-    title: "History",
-    body: "Sessions, versions, and evaluation snapshots are saved locally. Editing or restoring a prompt appends a version; earlier versions are never overwritten.",
+    title: "Improvement",
+    body: "The Improver revises the prompt while preserving the original. Intent, constraints, confirmed requirements, assumptions, and unknown items are kept; the revision is re-evaluated under the identical rubric.",
+  },
+  {
+    step: "07",
+    title: "Comparison and history",
+    body: "Both snapshots are stored separately. The radar chart and dimension table plot the real scores, including declines. Sessions and versions stay in this browser's localStorage.",
   },
 ];
 
 const endpoints = [
-  { method: "POST", path: "/api/ai/generate", body: "configuration", result: "structured prompt" },
+  { method: "POST", path: "/api/ai/discover", body: "idea, optional category, answers, budget", result: "next question and project brief" },
+  { method: "POST", path: "/api/ai/generate", body: "configuration, depth, target agent, brief", result: "structured prompt" },
   { method: "POST", path: "/api/ai/analyze", body: "prompt, category, rubricVersion", result: "evaluation snapshot" },
   {
     method: "POST",
@@ -52,6 +59,7 @@ const endpoints = [
     result: "revised prompt and change list",
   },
   { method: "GET", path: "/api/ai/status", body: "—", result: "mode and configured model" },
+  { method: "POST", path: "/api/ai/verify", body: "candidate key (header)", result: "model and key source" },
 ];
 
 export default function DocsPage() {
@@ -61,7 +69,7 @@ export default function DocsPage() {
         title="Documentation"
         section="System"
         description="How PromptScope measures prompts, what the numbers mean, and how Live and Demo modes differ."
-        meta={<Badge tone="neutral">Rubric {RUBRIC_VERSION}</Badge>}
+        meta={<Badge tone="neutral">Domain rubrics</Badge>}
         actions={<ModeBadge showModel />}
       />
 
@@ -114,8 +122,13 @@ export default function DocsPage() {
 
       <section className="border-t border-line-soft py-8">
         <h2 className="mono-label mb-3">The eight dimensions</h2>
+        <p className="mb-4 max-w-[80ch] text-[11.5px] leading-[1.6] text-ink-3">
+          Every category keeps the same eight axis keys so historical scores stay comparable. Labels, descriptions, and
+          scoring guidance change with the domain: a design prompt is judged on visual direction and typography, while a
+          backend prompt is judged on architecture, data contracts, failure handling, and verification.
+        </p>
         <ul className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-          {evaluationDimensions.map((dimension) => (
+          {getEvaluationDimensions("ui_ux").map((dimension) => (
             <li key={dimension.key} className="border-t border-line-soft pt-3">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[12.5px] font-medium text-ink">{dimension.label}</span>
@@ -127,6 +140,39 @@ export default function DocsPage() {
             </li>
           ))}
         </ul>
+        <div className="mt-6 overflow-hidden rounded-[8px] border border-line">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-line bg-bg-raised">
+                <th scope="col" className="px-3 py-2 text-left font-mono text-[9px] font-normal uppercase tracking-[0.1em] text-ink-3">
+                  Family
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-mono text-[9px] font-normal uppercase tracking-[0.1em] text-ink-3">
+                  Categories
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-mono text-[9px] font-normal uppercase tracking-[0.1em] text-ink-3">
+                  Rubric
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {categoryGroups.map((group) => {
+                const groupCategories = categories.filter((item) => item.group === group.id);
+                return (
+                  <tr key={group.id} className="border-b border-line-soft last:border-b-0">
+                    <td className="px-3 py-2.5 text-[11.5px] text-ink">{group.label}</td>
+                    <td className="px-3 py-2.5 text-[11.5px] text-ink-2">
+                      {groupCategories.map((item) => item.label).join(", ")}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono text-[10.5px] text-ink-3">
+                      {getRubricVersion(groupCategories[0]?.id)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="border-t border-line-soft py-8">
@@ -203,10 +249,11 @@ export default function DocsPage() {
           <div className="rounded-[8px] border border-[var(--warn-border)] bg-[var(--warn-bg)] px-4 py-3.5">
             <Badge tone="demo">Demo mode</Badge>
             <p className="mt-3 text-[12px] leading-[1.65] text-ink-2">
-              Active when no key is configured. Prompts are evaluated locally by a deterministic rule engine that
-              inspects the text for real signals — audience, measured values, named components, type roles,
-              constraints, contradictions. Results are labelled <span className="font-mono">DEMO DATA</span> and no
-              request leaves the server.
+              Active when no key is configured. Guided discovery, prompt generation and evaluation all run locally:
+              discovery from a seeded question bank, generation from the local draft composer, and scoring from a
+              deterministic rule engine that inspects the text for real signals — audience, measured values, named
+              components, type roles, constraints, contradictions. Results are labelled{" "}
+              <span className="font-mono">DEMO DATA</span> and no request leaves the server.
             </p>
           </div>
         </div>
@@ -217,11 +264,13 @@ export default function DocsPage() {
         <ul className="divide-y divide-line-soft border-y border-line-soft">
           {[
             "Scores are model-assisted assessments; the same prompt may score differently across runs or models.",
-            "Demo Mode uses a rule engine, so its explanations are keyword-driven rather than semantic.",
-            "History, versions, and comparisons live in this browser's localStorage only.",
+            "Demo Mode uses a rule engine, so its explanations are keyword-driven and its interview is scripted, not semantic.",
+            "The guided interview is adaptive within a bounded set of seeded questions; it does not know facts that were never described.",
+            "Assumptions are recorded and labelled, but PromptScope cannot verify that an assumption is actually true for your project.",
+            "Coding-agent prompts ask the agent to inspect, plan, verify, and report; PromptScope does not run the code, tests, or deployment.",
+            "History, versions, builder drafts, and comparisons live in this browser's localStorage only.",
             "A key saved from Settings is readable by anything running on this origin; the server environment variable is safer for production.",
-            "Only the Visual Design and UI/UX categories are implemented; others are planned.",
-            "API availability depends on the provider, your quota, and the configured model.",
+            "API availability depends on the provider, your quota, and the configured model. Rate limits and validation errors surface as explicit messages.",
           ].map((item) => (
             <li key={item} className="py-2.5 text-[12px] leading-[1.6] text-ink-2">
               {item}
@@ -232,7 +281,7 @@ export default function DocsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft py-5">
         <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ink-3">
-          Direction before generation · diagnosis before improvement
+          Guided discovery before generation · diagnosis before improvement
         </span>
         <div className="flex items-center gap-2">
           <Link href="/builder" className="text-[12px] font-medium text-ink-2 hover:text-orange">

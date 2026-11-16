@@ -18,7 +18,8 @@ npm test
 npm run build
 ```
 
-All four must pass. The build output should list the four `ƒ` API routes and the static pages.
+All four must pass. The build output should list the six `ƒ` API routes (`discover`, `generate`,
+`analyze`, `improve`, `status`, `verify`) and the static pages.
 
 ## 3. Vercel
 
@@ -39,6 +40,8 @@ All four must pass. The build output should list the four `ƒ` API routes and th
    - `GET /api/ai/status` returns `{ "ok": true, "data": { "mode": "live", ... } }` when a key is set,
      and `"mode": "demo"` when it is not.
    - The dashboard badge reads **Live AI mode** or **Demo mode** accordingly.
+   - One discover request returns a question and `source: "live"` (or a labelled fallback).
+   - One generate request returns a prompt with `depth`, `targetAgent` and `source`.
    - One analyze request returns eight dimensions and an overall score.
 
 ## 4. Any Node host

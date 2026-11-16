@@ -5,6 +5,14 @@ import { buildGenerationInstruction, buildGenerationPrompt } from "@/lib/ai/prom
 import { demoGenerate } from "@/lib/ai/demo/generate";
 import { getAiStatus } from "@/lib/ai/client";
 import type { GeneratedPrompt, PromptConfiguration } from "@/types/prompt";
+import type { PromptDepth } from "@/types/guided";
+
+const tokensByDepth: Record<PromptDepth, number> = {
+  concise: 2_560,
+  balanced: 4_096,
+  detailed: 6_144,
+  comprehensive: 8_192,
+};
 
 export async function generatePrompt(
   configuration: PromptConfiguration,
@@ -16,13 +24,16 @@ export async function generatePrompt(
     return demoGenerate(configuration);
   }
 
+  const depth = configuration.depth ?? "balanced";
+  const targetAgent = configuration.targetAgent ?? "general";
+
   const { data } = await callStructured(
     {
-      systemInstruction: buildGenerationInstruction(),
+      systemInstruction: buildGenerationInstruction(configuration.category, depth, targetAgent),
       userPrompt: buildGenerationPrompt(configuration),
       schema: generationResponseSchema,
-      temperature: 0.7,
-      maxOutputTokens: 4096,
+      temperature: 0.6,
+      maxOutputTokens: tokensByDepth[depth],
       label: "generate",
     },
     browserApiKey,
@@ -37,5 +48,7 @@ export async function generatePrompt(
     assumptions: data.assumptions,
     recommendations: data.recommendations,
     source: "live",
+    depth,
+    targetAgent,
   };
 }

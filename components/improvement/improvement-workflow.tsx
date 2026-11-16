@@ -8,14 +8,14 @@ import { LoadingLine, Notice } from "@/components/ui/notice";
 import { PromptEditor } from "@/components/ui/prompt-editor";
 import { ToggleChip } from "@/components/ui/toggle-chip";
 import { useToast } from "@/components/ui/toast";
-import { evaluationDimensions, getScoreBand } from "@/config/evaluation-rubric";
+import { getDimension, getEvaluationDimensions, getScoreBand } from "@/config/evaluation-rubric";
 import { postJson, type ApiError } from "@/lib/api/client";
 import { saveComparison } from "@/lib/storage/comparison-storage";
 import { addVersion } from "@/lib/storage/prompt-storage";
 import { ScopeRadar } from "@/components/visualization/scope-radar";
 import { DeltaPill, signed } from "@/components/comparison/delta-pill";
 import { compareSnapshots } from "@/lib/scoring/compare-scores";
-import { getDimension } from "@/config/evaluation-rubric";
+
 import { cn } from "@/lib/utils";
 import type { DimensionKey, EvaluationSnapshot, PromptImprovement, ScoreComparison } from "@/types/evaluation";
 
@@ -166,7 +166,7 @@ export function ImprovementWorkflow({
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {evaluationDimensions.map((dimension) => (
+                {getEvaluationDimensions(category).map((dimension) => (
                   <ToggleChip
                     key={dimension.key}
                     label={dimension.label}
@@ -264,7 +264,7 @@ export function ImprovementWorkflow({
                         <span className="mt-0.5 shrink-0 rounded-[3px] border border-line px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-[0.1em] text-ink-3">
                           {change.dimension === "structure"
                             ? "Structure"
-                            : getDimension(change.dimension).label}
+                            : getDimension(change.dimension, category).label}
                         </span>
                         <span>
                           <span className="block text-[12px] leading-[1.55] text-ink-2">{change.change}</span>
@@ -363,6 +363,7 @@ export function ImprovementWorkflow({
             comparison={comparison}
             original={originalSnapshot}
             improved={improvedSnapshot}
+            category={category}
             onSave={handleSaveComparison}
             saved={Boolean(savedId)}
             onSaveVersion={
@@ -404,6 +405,7 @@ export function ComparisonPanel({
   comparison,
   original,
   improved,
+  category,
   onSave,
   saved,
   onSaveVersion,
@@ -412,6 +414,7 @@ export function ComparisonPanel({
   comparison: ScoreComparison;
   original: EvaluationSnapshot;
   improved: EvaluationSnapshot;
+  category?: string;
   onSave?: () => void;
   saved?: boolean;
   onSaveVersion?: () => void;
@@ -471,7 +474,7 @@ export function ComparisonPanel({
           </div>
 
           <div className="mt-4">
-            <ScopeRadar original={original} improved={improved} height={compact ? 260 : 300} compact={compact} />
+            <ScopeRadar original={original} improved={improved} category={category} height={compact ? 260 : 300} compact={compact} />
           </div>
         </div>
 
@@ -529,7 +532,7 @@ export function ComparisonPanel({
                   key={key}
                   className="rounded-[3px] border border-[var(--ok-border)] bg-[var(--ok-bg)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-green"
                 >
-                  {getDimension(key as DimensionKey).label}
+                  {getDimension(key as DimensionKey, category).label}
                 </li>
               ))}
             </ul>
@@ -547,7 +550,7 @@ export function ComparisonPanel({
                     {weakness.severity}
                   </Badge>
                   <span className="text-[11.5px] leading-[1.55] text-ink-2">
-                    <span className="text-ink">{getDimension(weakness.dimension).label}:</span> {weakness.problem}
+                    <span className="text-ink">{getDimension(weakness.dimension, category).label}:</span> {weakness.problem}
                   </span>
                 </li>
               ))}

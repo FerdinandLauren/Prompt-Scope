@@ -1,780 +1,120 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  ArrowUpRight,
-  Check,
-  CircleDot,
-  Plus,
-  RotateCcw,
-  ScanSearch,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { useCallback, useSyncExternalStore } from "react";
+import { CircleDot, Compass, SlidersHorizontal } from "lucide-react";
 import { WorkspaceHeader } from "@/components/layout/workspace-header";
 import { Badge } from "@/components/ui/badge";
-import { buttonClass } from "@/components/ui/button";
-import { Disclosure } from "@/components/ui/disclosure";
-import { LabeledInput, LabeledTextarea } from "@/components/ui/field";
-import { Notice, LoadingLine } from "@/components/ui/notice";
-import { PromptEditor } from "@/components/ui/prompt-editor";
-import { Slider } from "@/components/ui/slider";
-import { ToggleChip } from "@/components/ui/toggle-chip";
-import { useToast } from "@/components/ui/toast";
-import { DirectionProfile } from "@/components/builder/direction-profile";
-import { categories, getCategory } from "@/config/app";
+import { GuidedBuilder } from "@/components/builder/guided-builder";
+import { AdvancedBuilder } from "@/components/builder/advanced-builder";
 import {
-  constraintOptions,
-  defaultSliders,
-  emptyConfiguration,
-  outputRequirementOptions,
-  presets,
-  sliderDefinitions,
-  visualPreferenceOptions,
-} from "@/config/presets";
-import { buildDraftPrompt } from "@/lib/prompt/draft";
-import { postJson, type ApiError } from "@/lib/api/client";
-import { savePendingPrompt } from "@/lib/storage/pending-prompt";
-import { createSession } from "@/lib/storage/prompt-storage";
-import { SavePromptDialog } from "@/components/history/session-detail";
-import { deriveTitle } from "@/lib/utils";
+  getBuilderDraftServerSnapshot,
+  getBuilderDraftSnapshot,
+  subscribeBuilderDraft,
+  updateBuilderDraft,
+  type BuilderDraft,
+  type BuilderMode,
+} from "@/lib/storage/builder-draft";
 import { cn } from "@/lib/utils";
-import { firstIssue, promptConfigurationSchema } from "@/lib/validation/schemas";
-import type { GeneratedPrompt, PromptConfiguration, SliderKey } from "@/types/prompt";
+import type { PromptConfiguration } from "@/types/prompt";
 
-function SectionLabel({ index, label, detail }: { index: string; label: string; detail?: string }) {
-  return (
-    <div className="mb-4 flex items-baseline justify-between gap-5 border-b border-line-soft pb-2.5">
-      <h2 className="flex items-baseline gap-2.5 text-[12px] font-medium text-ink">
-        <span className="font-mono text-[9px] tracking-[0.1em] text-ink-3">{index}</span>
-        {label}
-      </h2>
-      {detail ? <span className="mono-label">{detail}</span> : null}
-    </div>
-  );
-}
+const modeCopy: Record<BuilderMode, { label: string; description: string; icon: typeof Compass }> = {
+  guided: {
+    label: "Guided",
+    description: "Turn an incomplete idea into a brief, then into a prompt.",
+    icon: Compass,
+  },
+  advanced: {
+    label: "Advanced",
+    description: "Control every parameter directly.",
+    icon: SlidersHorizontal,
+  },
+};
 
 export function BuilderView() {
-  const router = useRouter();
-  const { showToast } = useToast();
-  const [configuration, setConfiguration] = useState<PromptConfiguration>(emptyConfiguration);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [customConstraint, setCustomConstraint] = useState("");
-  const [generated, setGenerated] = useState<GeneratedPrompt | null>(null);
-  const [generationError, setGenerationError] = useState<ApiError | null>(null);
-  const [promptText, setPromptText] = useState("");
-  const [title, setTitle] = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const draft = useSyncExternalStore(
+    subscribeBuilderDraft,
+    getBuilderDraftSnapshot,
+    getBuilderDraftServerSnapshot,
+  );
 
-  const category = getCategory(configuration.category);
+  const handleGuidedChange = useCallback((guided: BuilderDraft["guided"]) => {
+    updateBuilderDraft((current) => ({ ...current, guided }));
+  }, []);
 
-  const selectedPreset = useMemo(() => {
-    const match = presets.find((preset) =>
-      sliderDefinitions.every(
-        (definition) => preset.values[definition.key as SliderKey] === configuration.sliders[definition.key as SliderKey],
-      ),
-    );
-    return match?.id ?? null;
-  }, [configuration.sliders]);
+  const handleConfigurationChange = useCallback((configuration: PromptConfiguration) => {
+    updateBuilderDraft((current) => ({ ...current, configuration }));
+  }, []);
 
-  const completion = useMemo(() => {
-    const checks = [
-      configuration.objective.trim().length >= 12,
-      configuration.audience.trim().length > 0,
-      configuration.context.trim().length > 0,
-      configuration.visualPreferences.length > 0,
-      configuration.outputRequirements.length > 0,
-      configuration.constraints.length > 0,
-    ];
-    return { done: checks.filter(Boolean).length, total: checks.length };
-  }, [configuration]);
+  const handleMode = useCallback((mode: BuilderMode) => {
+    updateBuilderDraft((current) => ({ ...current, mode }));
+  }, []);
 
-  function update<K extends keyof PromptConfiguration>(key: K, value: PromptConfiguration[K]) {
-    setConfiguration((current) => ({ ...current, [key]: value }));
-    setErrors((current) => {
-      if (!current[String(key)]) return current;
-      const next = { ...current };
-      delete next[String(key)];
-      return next;
-    });
-  }
-
-  function setSlider(key: SliderKey, value: number) {
-    setConfiguration((current) => ({ ...current, sliders: { ...current.sliders, [key]: value } }));
-  }
-
-  function applyPreset(id: string) {
-    const preset = presets.find((item) => item.id === id);
-    if (!preset) return;
-    setConfiguration((current) => ({ ...current, sliders: { ...preset.values } }));
-    showToast(`${preset.label} preset applied to eight parameters.`, "info");
-  }
-
-  function toggleValue(key: "visualPreferences" | "outputRequirements" | "constraints", value: string) {
-    const current = configuration[key];
-    const limit = key === "visualPreferences" ? 10 : key === "outputRequirements" ? 8 : 12;
-    if (!current.includes(value) && current.length >= limit) {
-      showToast(`Choose up to ${limit} options in this group.`, "error");
-      return;
-    }
-    update(
-      key,
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
-    );
-  }
-
-  function addCustomConstraint() {
-    const value = customConstraint.trim();
-    if (!value) return;
-    if (configuration.constraints.some((item) => item.toLowerCase() === value.toLowerCase())) {
-      setCustomConstraint("");
-      return;
-    }
-    if (configuration.constraints.length >= 12) {
-      showToast("Choose up to 12 constraints.", "error");
-      return;
-    }
-    update("constraints", [...configuration.constraints, value]);
-    setCustomConstraint("");
-  }
-
-  async function handleGenerate() {
-    const parsed = promptConfigurationSchema.safeParse(configuration);
-    if (!parsed.success) {
-      const nextErrors = firstIssue(parsed.error);
-      setErrors(nextErrors);
-      showToast("Complete the required direction fields before generating.", "error");
-      if (nextErrors.objective) document.getElementById("objective")?.focus();
-      return;
-    }
-
-    setErrors({});
-    setGenerationError(null);
-    setGenerating(true);
-
-    const result = await postJson<GeneratedPrompt>("/api/ai/generate", {
-      configuration: parsed.data,
-    });
-
-    setGenerating(false);
-
-    if (!result.ok) {
-      // The local composer is always available, so a provider failure is recoverable.
-      setGenerationError(result.error);
-      showToast(result.error.message, "error");
-      return;
-    }
-
-    setGenerated(result.data);
-    setPromptText(result.data.prompt);
-    setTitle(result.data.title);
-    previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    showToast(
-      result.data.source === "live"
-        ? "Prompt generated. Review and edit before analysis."
-        : "Demo Mode composed a structured prompt from your direction.",
-      result.data.source === "live" ? "success" : "info",
-    );
-  }
-
-  function useLocalDraft() {
-    const parsed = promptConfigurationSchema.safeParse(configuration);
-    if (!parsed.success) return;
-    const draft = buildDraftPrompt(parsed.data);
-    setGenerated(draft);
-    setPromptText(draft.prompt);
-    setTitle(draft.title);
-    setGenerationError(null);
-    showToast("Local draft created. It is labelled as a local draft, not an AI response.", "info");
-  }
-
-  function resetConfiguration() {
-    setConfiguration(emptyConfiguration);
-    setCustomConstraint("");
-    setErrors({});
-    setGenerated(null);
-    setGenerationError(null);
-    setPromptText("");
-    setTitle("");
-    showToast("Direction reset to defaults.", "info");
-  }
-
-  function openAnalyzer() {
-    if (!promptText.trim()) return;
-    savePendingPrompt({
-      prompt: promptText,
-      title: title || generated?.title || "Untitled prompt",
-      category: configuration.category,
-      configuration,
-      generated: generated ?? undefined,
-      createdAt: new Date().toISOString(),
-    });
-    router.push("/analyzer");
-  }
-
-  function handleSavePrompt(sessionTitle: string) {
-    try {
-      const session = createSession({
-        title: sessionTitle,
-        category: configuration.category,
-        promptText,
-        source: generated?.source === "draft" ? "manual" : "generated",
-        label: generated?.source === "draft" ? "Local draft" : generated?.source === "demo" ? "Demo data" : "Generated",
-        configuration,
-      });
-      setTitle(sessionTitle);
-      setSaveDialogOpen(false);
-      setSavedSessionId(session.id);
-      showToast("Prompt saved to history as version 1.");
-    } catch (saveError) {
-      showToast(saveError instanceof Error ? saveError.message : "The prompt could not be saved.", "error");
-    }
-  }
+  const mode = draft.mode;
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-5 pb-20 sm:px-8 sm:pb-24 lg:px-10">
       <WorkspaceHeader
         title="Prompt Builder"
-        description="Define the direction first. Configuration is local until you generate; the prompt remains editable after it is built."
+        description={
+          mode === "guided"
+            ? "Describe the idea, answer a few focused questions, review the brief, then choose how deep the prompt should go."
+            : "Set the category, objective, depth, target agent, and parameters yourself. The prompt stays editable and local until you generate."
+        }
         actions={
-          <>
-            <span className="hidden items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-3 sm:flex">
-              <CircleDot size={11} className="text-orange" aria-hidden="true" />
-              {completion.done}/{completion.total} direction signals
-            </span>
-            <button type="button" onClick={resetConfiguration} className={buttonClass({ variant: "ghost", size: "sm" })}>
-              <RotateCcw size={13} strokeWidth={1.7} aria-hidden="true" />
-              Reset
-            </button>
-          </>
+          <span className="hidden items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-3 sm:flex">
+            <CircleDot size={11} className="text-orange" aria-hidden="true" />
+            {mode === "guided" ? "Guided discovery" : "Direct control"}
+          </span>
         }
       />
 
-      <div className="flex flex-col gap-14 py-9 sm:pt-10">
-        <div className="min-w-0">
-          <section>
-            <SectionLabel index="01" label="Category" detail="Initial scope" />
-            <fieldset>
-              <legend className="sr-only">Prompt category</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {categories.map((item) => {
-                  const active = configuration.category === item.id;
-                  return (
-                    <label
-                      key={item.id}
-                      className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-[7px] border p-3.5 transition-[border-color,background-color] duration-150",
-                        active
-                          ? "border-[var(--accent-border)] bg-[var(--accent-bg)]"
-                          : "border-line bg-bg-raised hover:border-[var(--line-strong)]",
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="category"
-                        value={item.id}
-                        checked={active}
-                        onChange={() => update("category", item.id)}
-                        className="mt-0.5 h-3.5 w-3.5 accent-[var(--orange)]"
-                      />
-                      <span>
-                        <span className="flex items-center gap-2 text-[12px] font-medium text-ink">
-                          {item.label}
-                          {active ? <Badge tone="medium">Active</Badge> : null}
-                        </span>
-                        <span className="mt-1 block text-[11px] leading-[1.5] text-ink-3">
-                          {item.description}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
-          </section>
-
-          <section className="mt-10">
-            <SectionLabel index="02" label="Objective" detail="Required" />
-            <LabeledTextarea
-              id="objective"
-              label="What should the AI design?"
-              hint="State the deliverable and the job it must do. Be concrete, not promotional."
-              value={configuration.objective}
-              onChange={(event) => update("objective", event.target.value)}
-              placeholder="Design a calm analytics dashboard for a subscription operations team…"
-              maxLength={600}
-              required
-              error={errors.objective}
-              rows={4}
-            />
-          </section>
-
-          <section className="mt-10">
-            <SectionLabel index="03" label="Context" detail="Optional" />
-            <div className="rounded-[8px] border border-line-soft bg-bg-raised px-5">
-              <Disclosure title="Audience and project background" description="Improves context accuracy">
-                <div className="grid gap-5 pt-1 sm:grid-cols-2">
-                  <LabeledInput
-                    label="Target audience"
-                    value={configuration.audience}
-                    onChange={(event) => update("audience", event.target.value)}
-                    placeholder="Operations leads at a B2B SaaS company"
-                    maxLength={240}
-                    hint="Who is this for?"
-                    error={errors.audience}
-                  />
-                  <div className="sm:col-span-2">
-                    <LabeledTextarea
-                      label="Design context"
-                      value={configuration.context}
-                      onChange={(event) => update("context", event.target.value)}
-                      placeholder="The product helps teams review subscription churn. It needs to feel trustworthy, not playful…"
-                      maxLength={1500}
-                      hint="Purpose, environment, existing brand, or constraints that change the direction."
-                      error={errors.context}
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </Disclosure>
-              <Disclosure title="Visual direction" description={`${configuration.visualPreferences.length} selected`}>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {visualPreferenceOptions.map((option) => (
-                    <ToggleChip
-                      key={option}
-                      label={option}
-                      active={configuration.visualPreferences.includes(option)}
-                      onClick={() => toggleValue("visualPreferences", option)}
-                    />
-                  ))}
-                </div>
-                <p className="mt-2.5 text-[11px] leading-[1.5] text-ink-3">
-                  Pick two to four. The generated prompt will treat these as direction, not a finished palette.
-                </p>
-              </Disclosure>
-              <Disclosure title="Output requirements" description={`${configuration.outputRequirements.length} selected`}>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {outputRequirementOptions.map((option) => (
-                    <ToggleChip
-                      key={option}
-                      label={option}
-                      active={configuration.outputRequirements.includes(option)}
-                      onClick={() => toggleValue("outputRequirements", option)}
-                    />
-                  ))}
-                </div>
-              </Disclosure>
-              <Disclosure title="Additional constraints" description={`${configuration.constraints.length} selected`}>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {constraintOptions.map((option) => (
-                    <ToggleChip
-                      key={option}
-                      label={option}
-                      active={configuration.constraints.includes(option)}
-                      onClick={() => toggleValue("constraints", option)}
-                    />
-                  ))}
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <input
-                    value={customConstraint}
-                    onChange={(event) => setCustomConstraint(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        addCustomConstraint();
-                      }
-                    }}
-                    placeholder="Add a specific constraint"
-                    aria-label="Custom constraint"
-                    maxLength={120}
-                    className="h-8 min-w-0 flex-1 rounded-[5px] border border-line bg-bg px-2.5 text-[12px] text-ink placeholder:text-ink-3 focus:border-orange focus:outline-none focus:ring-2 focus:ring-orange/15"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomConstraint}
-                    className={buttonClass({ variant: "secondary", size: "sm" })}
-                  >
-                    <Plus size={13} aria-hidden="true" />
-                    Add
-                  </button>
-                </div>
-                {configuration.constraints.length > 0 ? (
-                  <ul className="mt-2.5 flex flex-wrap gap-1.5" aria-label="Selected constraints">
-                    {configuration.constraints.map((constraint) => (
-                      <li
-                        key={constraint}
-                        className="inline-flex h-7 items-center gap-1.5 rounded-[4px] border border-line bg-surface px-2 text-[11px] text-ink-2"
-                      >
-                        {constraint}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            update(
-                              "constraints",
-                              configuration.constraints.filter((item) => item !== constraint),
-                            )
-                          }
-                          className="text-ink-3 hover:text-ink"
-                          aria-label={`Remove ${constraint}`}
-                        >
-                          <X size={10} aria-hidden="true" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </Disclosure>
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <SectionLabel index="04" label="Focus parameters" detail="0—100 each" />
-            <div className="rounded-[7px] border border-line bg-bg-raised p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-[12px] font-medium text-ink">Presets</div>
-                  <p className="mt-0.5 text-[11px] text-ink-3">Set all eight parameters at once.</p>
-                </div>
-                <Badge tone={selectedPreset ? "medium" : "neutral"}>
-                  {selectedPreset ? presets.find((preset) => preset.id === selectedPreset)?.label : "Custom"}
-                </Badge>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                {presets.map((preset) => {
-                  const active = selectedPreset === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset.id)}
-                      aria-pressed={active}
-                      title={preset.description}
-                      className={cn(
-                        "group relative flex flex-col gap-2 rounded-[5px] border px-2.5 py-2 text-left transition-[border-color,background-color,color] duration-150",
-                        active
-                          ? "border-[var(--accent-border)] bg-[var(--accent-bg)]"
-                          : "border-line bg-bg hover:border-[var(--line-strong)] hover:bg-surface",
-                      )}
-                    >
-                      <span className="flex h-6 items-end gap-[2px]" aria-hidden="true">
-                        {sliderDefinitions.map((definition) => (
-                          <span
-                            key={definition.key}
-                            className={cn(
-                              "w-[3px] rounded-[1px]",
-                              active ? "bg-orange" : "bg-[var(--bar)] group-hover:bg-[var(--bar-hover)]",
-                            )}
-                            style={{ height: `${Math.max(12, preset.values[definition.key as SliderKey] * 0.24)}px` }}
-                          />
-                        ))}
-                      </span>
-                      <span className={cn("text-[11px] leading-[1.25]", active ? "text-ink" : "text-ink-2")}>
-                        {preset.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-2 grid gap-x-10 sm:grid-cols-2">
-                {sliderDefinitions.map((definition) => (
-                  <Slider
-                    key={definition.key}
-                    id={`slider-${definition.key}`}
-                    label={definition.label}
-                    description={definition.description}
-                    value={configuration.sliders[definition.key as SliderKey]}
-                    defaultValue={defaultSliders[definition.key as SliderKey]}
-                    onChange={(value) => setSlider(definition.key as SliderKey, value)}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <div className="mt-10 rounded-[7px] border border-line bg-bg-raised p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-[12px] font-medium text-ink">Ready to compose?</div>
-                <p className="mt-0.5 max-w-[54ch] text-[11px] leading-[1.5] text-ink-3">
-                  Generation runs on the server. Without a configured key, Demo Mode composes the prompt locally
-                  and labels it as demo data.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={generating}
-                className={buttonClass({ variant: "primary", size: "lg", className: "min-w-[170px]" })}
-                aria-busy={generating}
-              >
-                {generating ? "Composing…" : "Generate prompt"}
-                <Sparkles size={14} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            </div>
-            {generating ? (
-              <div className="mt-3 border-t border-line-soft pt-3">
-                <LoadingLine label="Composing structured prompt" />
-              </div>
-            ) : null}
-            {generationError ? (
-              <Notice
-                tone="error"
-                title="Generation failed"
-                className="mt-3"
-                action={
-                  <button
-                    type="button"
-                    onClick={useLocalDraft}
-                    className={buttonClass({ variant: "secondary", size: "sm" })}
-                  >
-                    Use local draft
-                  </button>
-                }
-              >
-                {generationError.message} Your configuration is unchanged.
-              </Notice>
-            ) : null}
-            {errors.objective ? (
-              <p className="mt-2 text-[11px] text-[var(--danger-text)]" role="alert">
-                {errors.objective}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="min-w-0">
-          <section>
-            <SectionLabel index="05" label="Direction profile" detail={selectedPreset ? "Preset" : "Custom"} />
-            <div className="rounded-[8px] border border-line bg-bg-raised">
-              <div className="flex justify-center py-6 sm:py-7">
-                <DirectionProfile sliders={configuration.sliders} size={210} />
-              </div>
-              <div className="grid grid-cols-2 border-t border-line-soft sm:grid-cols-4">
-                {[
-                  ["Hierarchy", configuration.sliders.visualHierarchy],
-                  ["Type", configuration.sliders.typography],
-                  ["Detail", configuration.sliders.detail],
-                  ["Consistency", configuration.sliders.consistency],
-                ].map(([label, value]) => (
-                  <div key={String(label)} className="border-r border-line-soft px-3 py-2.5 last:border-r-0">
-                    <div className="font-mono text-[8px] uppercase tracking-[0.1em] text-ink-3">{label}</div>
-                    <div className="mt-1 font-mono text-[14px] tabular text-ink-2">
-                      {String(value).padStart(3, "0")}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <div ref={previewRef} className="mt-12 scroll-mt-6">
-            <SectionLabel
-              index="06"
-              label="Prompt output"
-              detail={`${category.shortLabel}${generated ? ` · ${generated.sections.length} sections` : ""}`}
-            />
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <span className="mono-label">Generated prompt</span>
-              <div className="flex items-center gap-2">
-                <Badge
-                  tone={
-                    !generated ? "neutral" : generated.source === "live" ? "live" : "demo"
-                  }
-                >
-                  {!generated
-                    ? "Not generated"
-                    : generated.source === "live"
-                      ? "Model output"
-                      : generated.source === "demo"
-                        ? "Demo data"
-                        : "Local draft"}
-                </Badge>
-              </div>
-            </div>
-
-            {!generated ? (
-              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-[8px] border border-dashed border-line px-6 py-10 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-line bg-bg">
-                  <ScanSearch size={20} strokeWidth={1.4} className="text-ink-3" aria-hidden="true" />
-                </div>
-                <h3 className="mt-5 font-display text-[21px] font-medium tracking-[-0.02em]">
-                  Your prompt will take shape here.
-                </h3>
-                <p className="mt-2 max-w-[38ch] text-[12px] leading-[1.6] text-ink-3">
-                  Complete the objective, then generate. The draft includes objective, audience, direction,
-                  composition, typography, constraints, output requirements, and calibration.
-                </p>
-                <div className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                  {["Editable", "Copyable", "Ready to analyze"].map((item) => (
-                    <span key={item} className="flex items-center gap-1.5">
-                      <Check size={10} className="text-green" aria-hidden="true" />
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="enter-rise space-y-3">
-                <div>
-                  <label htmlFor="prompt-title" className="sr-only">
-                    Prompt title
-                  </label>
-                  <input
-                    id="prompt-title"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    maxLength={160}
-                    className="w-full border-0 border-b border-line-soft bg-transparent pb-2 font-display text-[21px] font-medium tracking-[-0.02em] text-ink focus:border-orange focus:outline-none"
-                    placeholder="Prompt title"
-                  />
-                </div>
-
-                {generated.source === "draft" ? (
-                  <Notice tone="demo" title="Local draft — not an AI response">
-                    This preview is assembled from your configuration. Provider generation replaces it when a Gemini
-                    key is configured.
-                  </Notice>
-                ) : generated.source === "demo" ? (
-                  <Notice tone="demo" title="DEMO DATA — composed locally">
-                    Demo Mode built this prompt from the same structure a live model uses. No request was sent to a
-                    provider. Add <span className="font-mono">GEMINI_API_KEY</span> to generate a tailored prompt.
-                  </Notice>
-                ) : (
-                  <Notice tone="success" title="Generated by the configured model">
-                    Review the requirements before use. Edit any part; the prompt is yours to change.
-                  </Notice>
-                )}
-
-                <PromptEditor
-                  id="builder-prompt"
-                  label="Editable prompt"
-                  value={promptText}
-                  onChange={setPromptText}
-                  minHeight={340}
-                  hint="Edit freely. The original draft remains in this workspace until you reset."
-                />
-
-                {generated.assumptions.length > 0 || generated.recommendations.length > 0 ? (
-                  <div className="rounded-[7px] border border-line bg-bg-raised px-3.5 py-2">
-                    {generated.assumptions.length > 0 ? (
-                      <Disclosure title="Assumptions" description={`${generated.assumptions.length}`}>
-                        <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
-                          {generated.assumptions.map((item) => (
-                            <li key={item} className="flex gap-2">
-                              <span className="text-ink-3">—</span>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </Disclosure>
-                    ) : null}
-                    {generated.recommendations.length > 0 ? (
-                      <Disclosure title="Recommended considerations" description={`${generated.recommendations.length}`}>
-                        <ul className="space-y-1.5 text-[11.5px] leading-[1.55] text-ink-2">
-                          {generated.recommendations.map((item) => (
-                            <li key={item} className="flex gap-2">
-                              <span className="text-ink-3">—</span>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </Disclosure>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={openAnalyzer} className={buttonClass({ variant: "primary", size: "md" })}>
-                    <ScanSearch size={14} strokeWidth={1.8} aria-hidden="true" />
-                    Analyze prompt
-                  </button>
-                  {savedSessionId ? (
-                    <Link href="/history" className={buttonClass({ variant: "secondary", size: "md" })}>
-                      Saved — open history
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSaveDialogOpen(true)}
-                      className={buttonClass({ variant: "secondary", size: "md" })}
-                    >
-                      Save to history
-                    </button>
+      <div className="flex flex-col gap-3 border-b border-line-soft py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="tablist" aria-label="Builder mode" className="inline-flex rounded-[6px] border border-line p-0.5">
+            {(Object.keys(modeCopy) as BuilderMode[]).map((item) => {
+              const config = modeCopy[item];
+              const Icon = config.icon;
+              const active = mode === item;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => handleMode(item)}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded-[4px] px-2.5 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors duration-150",
+                    active ? "bg-surface text-ink" : "text-ink-3 hover:text-ink-2",
                   )}
-                  <button
-                    type="button"
-                    onClick={handleGenerate}
-                    className={buttonClass({ variant: "ghost", size: "md" })}
-                  >
-                    Generate again
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGenerated(null);
-                      setPromptText("");
-                      setTitle("");
-                      setSavedSessionId(null);
-                    }}
-                    className={buttonClass({ variant: "ghost", size: "md" })}
-                  >
-                    Clear output
-                  </button>
-                  <span className="ml-auto flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                    <span className="h-1 w-1 rounded-full bg-green" aria-hidden="true" />
-                    Editable
-                  </span>
-                </div>
-
-                <div className="border-t border-line-soft pt-3">
-                  <Disclosure title="Prompt structure" description={`${generated.sections.length} sections`}>
-                    <ol className="space-y-2">
-                      {generated.sections.map((section, index) => (
-                        <li key={section.heading} className="grid grid-cols-[20px_1fr] gap-2 text-[11.5px]">
-                          <span className="font-mono text-[9px] text-ink-3">0{index + 1}</span>
-                          <span>
-                            <span className="text-ink-2">{section.heading}</span>
-                            <span className="mt-0.5 block truncate text-[11px] text-ink-3">{section.content}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </Disclosure>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-5 flex items-start justify-between gap-5 border-t border-line-soft pt-3">
-              <p className="max-w-[46ch] text-[10.5px] leading-[1.5] text-ink-3">
-                Generated prompts are instructions, not executed code. Review the output before use.
-              </p>
-              <a
-                href="/docs"
-                className="inline-flex shrink-0 items-center gap-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-3 hover:text-ink"
-              >
-                How scoring works
-                <ArrowUpRight size={11} aria-hidden="true" />
-              </a>
-            </div>
+                >
+                  <Icon size={11} aria-hidden="true" />
+                  {config.label}
+                </button>
+              );
+            })}
           </div>
+          <p className="text-[11px] leading-[1.5] text-ink-3">{modeCopy[mode].description}</p>
         </div>
+        <Badge tone="neutral">Switching modes keeps your configuration</Badge>
       </div>
 
-      <SavePromptDialog
-        open={saveDialogOpen}
-        onClose={() => setSaveDialogOpen(false)}
-        defaultTitle={title || generated?.title || deriveTitle(promptText)}
-        category={category.label}
-        versionCount={1}
-        onSave={handleSavePrompt}
-      />
+      <div className={mode === "guided" ? undefined : "hidden"}>
+        <GuidedBuilder
+          configuration={draft.configuration}
+          onConfigurationChange={handleConfigurationChange}
+          initialGuided={draft.guided}
+          onGuidedChange={handleGuidedChange}
+          onSwitchMode={handleMode}
+        />
+      </div>
+
+      <div className={mode === "advanced" ? undefined : "hidden"}>
+        <AdvancedBuilder
+          configuration={draft.configuration}
+          onConfigurationChange={handleConfigurationChange}
+          onSwitchMode={handleMode}
+        />
+      </div>
     </div>
   );
 }

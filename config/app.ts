@@ -1,6 +1,12 @@
 export const APP_NAME = "PromptScope";
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "2.0.0";
 
+/**
+ * "Turn your ideas into instructions AI can understand and execute."
+ *
+ * Navigation stays deliberately small. Guided discovery lives inside the
+ * existing Prompt Builder rather than becoming a separate destination.
+ */
 export const navigation = [
   { href: "/", label: "Dashboard", icon: "dashboard" as const },
   { href: "/builder", label: "Prompt Builder", icon: "builder" as const },
@@ -14,32 +20,21 @@ export const systemNavigation = [
   { href: "/docs", label: "Documentation", icon: "docs" as const },
 ];
 
-export const categories = [
-  {
-    id: "ui_ux",
-    label: "UI/UX Design",
-    shortLabel: "UI/UX",
-    description: "Interfaces, product screens, dashboards, and interaction systems.",
-    available: true,
-  },
-  {
-    id: "visual_design",
-    label: "Visual Design",
-    shortLabel: "Visual",
-    description: "Editorial layouts, brand systems, art direction, and campaign visuals.",
-    available: true,
-  },
-] as const;
+export { categories, categoryGroups, getCategory } from "@/config/domains";
+export type { CategoryId, CategoryGroupId, DomainFamily } from "@/config/domains";
 
-export type CategoryId = (typeof categories)[number]["id"];
-
-export function getCategory(id: string) {
-  return categories.find((category) => category.id === id) ?? categories[0];
-}
-
+/**
+ * The design-family rubric remains the historical default so stored sessions
+ * and comparisons keep their original meaning. Category-specific rubrics are
+ * resolved through `getRubricVersionForCategory`.
+ */
 export const RUBRIC_VERSION = "visual-uiux-v1";
 
+/**
+ * Generated prompts for agent work are legitimately long. The analyzer accepts
+ * them in full instead of truncating the text a user is trying to diagnose.
+ */
 export const PROMPT_LIMITS = {
   min: 24,
-  max: 12_000,
+  max: 40_000,
 } as const;

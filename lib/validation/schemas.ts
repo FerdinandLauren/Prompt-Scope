@@ -1,8 +1,23 @@
 import { z } from "zod";
 import { PROMPT_LIMITS } from "@/config/app";
+import { CATEGORY_IDS } from "@/config/domains";
 import { sliderDefinitions } from "@/config/presets";
 
-export const categorySchema = z.enum(["ui_ux", "visual_design"]);
+export const categorySchema = z.enum(CATEGORY_IDS);
+
+export const promptDepthSchema = z.enum(["concise", "balanced", "detailed", "comprehensive"]);
+
+export const targetAgentSchema = z.enum([
+  "general",
+  "coding",
+  "design",
+  "research",
+  "automation",
+  "writing",
+  "custom",
+]);
+
+export const complexitySchema = z.enum(["simple", "moderate", "complex"]);
 
 export const sliderValueSchema = z
   .number({ message: "Slider values must be numbers." })
@@ -18,26 +33,50 @@ const sliderShape = Object.fromEntries(
 
 export const slidersSchema = z.object(sliderShape);
 
+export const briefSourceSchema = z.enum(["user", "assumption", "recommendation"]);
+
+export const briefSectionSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  heading: z.string().trim().min(1).max(90),
+  content: z.string().trim().max(4000, "Keep a brief section under 4000 characters.").default(""),
+  source: briefSourceSchema,
+});
+
+export const projectBriefSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  objective: z.string().trim().min(8, "Describe the objective in at least 8 characters.").max(1200),
+  summary: z.string().trim().max(2000).default(""),
+  category: categorySchema,
+  complexity: complexitySchema,
+  sections: z.array(briefSectionSchema).min(1).max(28),
+  assumptions: z.array(z.string().trim().min(1).max(500)).max(16).default([]),
+  unknowns: z.array(z.string().trim().min(1).max(500)).max(16).default([]),
+  confirmedAt: z.string().trim().max(40).optional(),
+});
+
 export const promptConfigurationSchema = z.object({
   category: categorySchema,
   objective: z
     .string()
     .trim()
     .min(12, "Describe the objective in at least 12 characters.")
-    .max(600, "Keep the objective under 600 characters."),
-  audience: z.string().trim().max(240, "Keep the audience under 240 characters.").default(""),
+    .max(1200, "Keep the objective under 1200 characters."),
+  audience: z.string().trim().max(400, "Keep the audience under 400 characters.").default(""),
   context: z
     .string()
     .trim()
-    .max(1500, "Keep the context under 1500 characters.")
+    .max(3000, "Keep the context under 3000 characters.")
     .default(""),
-  visualPreferences: z.array(z.string().trim().min(1).max(60)).max(10, "Choose up to 10 visual preferences.").default([]),
+  visualPreferences: z.array(z.string().trim().min(1).max(80)).max(10, "Choose up to 10 visual preferences.").default([]),
   outputRequirements: z
-    .array(z.string().trim().min(1).max(60))
+    .array(z.string().trim().min(1).max(80))
     .max(8, "Choose up to 8 output requirements.")
     .default([]),
-  constraints: z.array(z.string().trim().min(1).max(120)).max(12, "Choose up to 12 constraints.").default([]),
+  constraints: z.array(z.string().trim().min(1).max(160)).max(12, "Choose up to 12 constraints.").default([]),
   sliders: slidersSchema,
+  depth: promptDepthSchema.optional(),
+  targetAgent: targetAgentSchema.optional(),
+  brief: projectBriefSchema.optional(),
 });
 
 export const generateRequestSchema = z.object({
@@ -77,7 +116,7 @@ export const improveRequestSchema = z.object({
   originalPrompt: promptTextSchema,
   category: categorySchema,
   rubricVersion: z.string().trim().min(1).max(64),
-  priorities: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+  priorities: z.array(z.string().trim().min(1).max(60)).max(8).default([]),
   additionalInstructions: z.string().trim().max(800, "Keep additional instructions under 800 characters.").default(""),
   analysis: z
     .object({
@@ -99,9 +138,28 @@ export const improveRequestSchema = z.object({
     .optional(),
 });
 
+export const discoveryAnswerSchema = z.object({
+  questionId: z.string().trim().min(1).max(100),
+  question: z.string().trim().min(1).max(400),
+  answer: z.string().trim().max(1500).default(""),
+  status: z.enum(["answered", "unknown", "skipped"]),
+});
+
+export const discoveryRequestSchema = z.object({
+  idea: z
+    .string()
+    .trim()
+    .min(3, "Describe your idea in at least 3 characters.")
+    .max(2000, "Keep the idea under 2000 characters so it can be understood in one pass."),
+  category: categorySchema.optional(),
+  answers: z.array(discoveryAnswerSchema).max(24).default([]),
+  budget: z.number().int().min(3).max(12).optional(),
+});
+
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 export type ImproveRequest = z.infer<typeof improveRequestSchema>;
+export type DiscoveryRequest = z.infer<typeof discoveryRequestSchema>;
 
 export function firstIssue(error: z.ZodError): Record<string, string> {
   const result: Record<string, string> = {};
