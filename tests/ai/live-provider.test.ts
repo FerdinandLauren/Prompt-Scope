@@ -177,17 +177,18 @@ describe("live AI mode", () => {
     expect((error as AiError).message).not.toContain("12345");
   });
 
-  it("treats a rejected key as a configuration problem, not a user error", async () => {
+  it("treats a rejected key as a key problem, not a user error", async () => {
     stubProvider(providerFailure(403, "API key not valid. Please pass a valid API key."));
     const error = await analyzePrompt(ANALYZE_INPUT).catch((thrown: unknown) => thrown);
-    expect((error as AiError).code).toBe("missing_api_key");
+    expect(error).toBeInstanceOf(AiError);
+    expect((error as AiError).code).toBe("invalid_api_key");
     expect((error as AiError).retryable).toBe(false);
   });
 
-  it("classifies an unavailable model as a provider error", async () => {
+  it("classifies an unavailable model as a model availability problem", async () => {
     stubProvider(providerFailure(404, "models/gemini-9-not-real is not found"));
     const error = await analyzePrompt(ANALYZE_INPUT).catch((thrown: unknown) => thrown);
-    expect((error as AiError).code).toBe("provider_error");
+    expect((error as AiError).code).toBe("model_unavailable");
   });
 
   it("generates prompts from the provider and marks the source as live", async () => {

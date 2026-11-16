@@ -13,7 +13,17 @@ import { postJson } from "@/lib/api/client";
 import { isUsableApiKey } from "@/lib/security/browser-api-key";
 import { cn } from "@/lib/utils";
 
-type VerifyResponse = { model: string; source: "environment" | "browser" | "none" };
+type VerifyResponse = { model: string; source: "environment" | "browser" | "none"; slow?: boolean };
+
+/** Provider-side problems that say nothing about whether the key is valid. */
+const KEEP_KEY_ERROR_CODES = new Set([
+  "timeout",
+  "network",
+  "rate_limit",
+  "provider_error",
+  "throttled",
+  "quota_exceeded",
+]);
 
 export function BrowserKeyPanel() {
   const { hasKey, remembered, masked, save, clear } = useBrowserApiKey();
@@ -26,6 +36,7 @@ export function BrowserKeyPanel() {
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState<string | null>(null);
+  const [verifiedSlow, setVerifiedSlow] = useState(false);
 
   const described = describeKeySource(status);
   const draftLooksUsable = isUsableApiKey(draft.trim());
@@ -40,6 +51,7 @@ export function BrowserKeyPanel() {
     setError(null);
     setVerifying(true);
     setVerified(null);
+    setVerifiedSlow(false);
 
     // The key is only sent to this application's own verify route, and it is
     // saved only after the provider confirms that it works.
@@ -55,6 +67,15 @@ export function BrowserKeyPanel() {
     setVerifying(false);
 
     if (!result.ok) {
+      if (KEEP_KEY_ERROR_CODES.has(result.error.code)) {
+        // A slow or unreachable provider says nothing about the key itself, so
+        // keep it and let the user retry the test instead of losing the paste.
+        setDraft("");
+        setError(`${result.error.message} The key was kept so you can retry the test.`);
+        showToast("The provider did not answer. The key was kept; try again.", "error");
+        return;
+      }
+
       clear();
       setDraft(previous);
       setError(
@@ -65,6 +86,7 @@ export function BrowserKeyPanel() {
     }
 
     setVerified(`Connected with ${result.data.model}.`);
+    setVerifiedSlow(Boolean(result.data.slow));
     setDraft("");
     showToast(
       remember ? "Key verified and remembered on this device." : "Key verified for this browser session.",
@@ -76,6 +98,7 @@ export function BrowserKeyPanel() {
     setError(null);
     setVerifying(true);
     setVerified(null);
+    setVerifiedSlow(false);
 
     const result = await postJson<VerifyResponse>("/api/ai/verify", {});
     setVerifying(false);
@@ -85,6 +108,7 @@ export function BrowserKeyPanel() {
       return;
     }
     setVerified(`Connected with ${result.data.model}.`);
+    setVerifiedSlow(Boolean(result.data.slow));
   }
 
   return (
@@ -182,6 +206,11 @@ export function BrowserKeyPanel() {
             The key is sent only to this application&apos;s own server route to reach Gemini. It is never written to a
             server log, a database, or this repository.
           </p>
+          {verifying ? (
+            <p role="status" className="mt-1.5 text-[11px] leading-[1.5] text-ink-3">
+              Contacting Gemini. The first request can take up to a minute.
+            </p>
+          ) : null}
         </div>
 
         <label className="flex items-start gap-2.5">
@@ -213,10 +242,16 @@ export function BrowserKeyPanel() {
         ) : null}
 
         {verified ? (
-          <Notice tone="success" title="Connection verified">
+          <Notice
+            tone={verifiedSlow ? "demo" : "success"}
+            title={verifiedSlow ? "Key verified, slow test" : "Connection verified"}
+          >
             <span className="flex items-center gap-2">
               <Check size={12} aria-hidden="true" />
               {verified}
+              {verifiedSlow
+                ? " The key and model are valid, but the test answer was slow, so provider responses may take a while."
+                : null}
             </span>
           </Notice>
         ) : null}

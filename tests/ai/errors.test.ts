@@ -18,17 +18,17 @@ describe("normalizeProviderError", () => {
     expect(error.code).toBe("quota_exceeded");
   });
 
-  it("treats 401 and 403 as a configuration problem that must not be retried", () => {
+  it("treats 401 and 403 as a rejected key that must not be retried", () => {
     for (const status of [401, 403]) {
       const error = normalizeProviderError(providerError(status, "permission denied"));
-      expect(error.code).toBe("missing_api_key");
+      expect(error.code).toBe("invalid_api_key");
       expect(error.retryable).toBe(false);
     }
   });
 
-  it("treats a bad API key reported as 400 as configuration, not user input", () => {
+  it("treats a bad API key reported as 400 as a key problem, not user input", () => {
     const error = normalizeProviderError(providerError(400, "API key not valid"));
-    expect(error.code).toBe("missing_api_key");
+    expect(error.code).toBe("invalid_api_key");
   });
 
   it("treats other 400 responses as invalid requests", () => {
@@ -37,9 +37,9 @@ describe("normalizeProviderError", () => {
     expect(error.retryable).toBe(false);
   });
 
-  it("treats 404 as a provider error so an unavailable model is visible", () => {
+  it("treats 404 as a model availability problem so an unavailable model is visible", () => {
     const error = normalizeProviderError(providerError(404, "model not found"));
-    expect(error.code).toBe("provider_error");
+    expect(error.code).toBe("model_unavailable");
     expect(error.retryable).toBe(false);
   });
 

@@ -1,5 +1,7 @@
 export type AiErrorCode =
   | "missing_api_key"
+  | "invalid_api_key"
+  | "model_unavailable"
   | "invalid_request"
   | "invalid_response"
   | "rate_limit"
@@ -40,6 +42,10 @@ function statusForCode(code: AiErrorCode): number {
       return 400;
     case "missing_api_key":
       return 503;
+    case "invalid_api_key":
+      return 401;
+    case "model_unavailable":
+      return 404;
     case "throttled":
     case "rate_limit":
       return 429;
@@ -57,12 +63,17 @@ function statusForCode(code: AiErrorCode): number {
 export const userMessageForCode: Record<AiErrorCode, string> = {
   missing_api_key:
     "Live AI mode is not configured. Add GEMINI_API_KEY to .env.local, or continue in Demo Mode.",
+  invalid_api_key:
+    "The Gemini API key was rejected. Copy the whole key from Google AI Studio again and make sure the Generative Language API is enabled for its project.",
+  model_unavailable:
+    "The configured Gemini model is not available to this key. Set GEMINI_MODEL to a model your key can use, such as gemini-3.8-flash.",
   invalid_request: "The request was rejected. Check the fields and try again.",
   invalid_response:
     "The model returned a response the application could not validate. Nothing was saved. Try again.",
   rate_limit: "The provider rate limit was reached. Wait a moment before retrying.",
   quota_exceeded: "The provider usage quota for this API key has been reached.",
-  timeout: "The provider did not respond in time. Your input is preserved; try again.",
+  timeout:
+    "The provider did not respond in time. Check the connection and try again; a proxy or firewall can slow the first request.",
   network: "The provider could not be reached. Check the connection and retry.",
   provider_error: "The provider returned an error. Your input is preserved; try again.",
   throttled: "Too many requests from this session. Wait a moment before sending another.",
@@ -92,16 +103,16 @@ export function normalizeProviderError(error: unknown, secrets: Array<string | u
     return new AiError("rate_limit", message, base);
   }
   if (status === 401 || status === 403) {
-    return new AiError("missing_api_key", message, { ...base, retryable: false });
+    return new AiError("invalid_api_key", message, { ...base, retryable: false });
   }
   if (status === 400) {
     if (lower.includes("api key") || lower.includes("api_key") || lower.includes("credential")) {
-      return new AiError("missing_api_key", message, { ...base, retryable: false });
+      return new AiError("invalid_api_key", message, { ...base, retryable: false });
     }
     return new AiError("invalid_request", message, { ...base, retryable: false });
   }
   if (status === 404) {
-    return new AiError("provider_error", message, { ...base, retryable: false });
+    return new AiError("model_unavailable", message, { ...base, retryable: false });
   }
   if (status >= 500) {
     // Provider-side failures are usually transient, so they may be retried once.

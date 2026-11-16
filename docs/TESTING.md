@@ -5,7 +5,7 @@ Verified 16 November 2026. Every number below came from a command that was actua
 ## 1. Automated tests
 
 ```bash
-npm test        # vitest, 176 tests, 18 files
+npm test        # vitest, 180 tests, 18 files
 npm run typecheck
 npm run lint
 ```
@@ -26,12 +26,12 @@ npm run lint
 | Comparison storage | `tests/storage/comparison-storage.test.ts` | 8 | Newest-first ordering, id replacement, deletion, corrupted JSON tolerance, and a stable snapshot reference (so React's `useSyncExternalStore` cannot loop). |
 | Browser key contract | `tests/security/browser-api-key.test.ts` | 9 | Header name is single-sourced; blank, placeholder and oversized values are rejected; the mask never returns the full key. |
 | Request-scoped keys | `tests/ai/browser-key-provider.test.ts` | 10 | A browser key wins for its own request while the environment client stays cached; the status payload never contains either key; provider errors redact the key; a full analyze call passes it through. |
-| Connection verification | `tests/ai/verify-connection.test.ts` | 3 | The verify path reports model and source only, fails cleanly with no key, and maps a rejected key without echoing it. |
+| Connection verification | `tests/ai/verify-connection.test.ts` | 7 | The verify path reports model and source only, fails cleanly with no key, distinguishes a rejected key from an unavailable model, keeps the key when only the test generation is slow, and never echoes the key. |
 | Key and theme preferences | `tests/ui/settings-preferences.test.ts` | 12 | Session storage is the default; the device copy appears only after opt-in; clear removes both; theme falls back to `system`, rejects invalid values, and the pre-paint script matches the storage key. |
 | Settings integration | `tests/ui/browser-key-settings.test.ts` | 6 | The key header is attached to `/api/ai/*` only, never third-party URLs; extra headers are preserved; source copy distinguishes server, browser and demo. |
 | Theme tokens | `tests/ui/theme-tokens.test.ts` | 16 | Both blocks define every semantic token; light is genuinely light; foreground/background pairs clear WCAG AA in both themes. |
 
-**Result:** 176 passed / 176. TypeScript: no errors. ESLint: no errors or warnings.
+**Result:** 180 passed / 180. TypeScript: no errors. ESLint: no errors or warnings.
 
 Two defects were found by these tests and fixed rather than worked around:
 
@@ -110,7 +110,7 @@ rule was removed — Tailwind preflight already handles anchor colour — and th
 | Request | Observed |
 |---|---|
 | `GET /api/ai/status` | `{ mode: "demo", configured: false, source: "none", model: null }` without a key; `{ mode: "live", configured: true, source: "environment" }` with one; `source: "browser"` when the request carries a usable `x-promptscope-api-key` header |
-| `POST /api/ai/verify` | `{ model, source }` when the provider answers; `missing_api_key` when no key exists; the key is never in the response |
+| `POST /api/ai/verify` | `{ model, source }` (plus `slow: true` when only the test generation timed out) when the provider answers; `missing_api_key`, `invalid_api_key` or `model_unavailable` for a configuration problem; the key is never in the response |
 | `POST /api/ai/generate` | Structured prompt, `source: "demo"` |
 | `POST /api/ai/analyze` | Eight dimensions, server-calculated overall, weaknesses, contradictions |
 | `POST /api/ai/analyze` with a 5-character prompt | `400 invalid_request` with a field message |

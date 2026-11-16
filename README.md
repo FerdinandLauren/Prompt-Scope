@@ -96,7 +96,7 @@ prompts, the analyzer, the improver, the radar comparison and history.
 | `npm run start` | Serve the production build |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest suite (176 tests) |
+| `npm test` | Vitest suite (180 tests) |
 | `npm run check` | Typecheck + lint + tests |
 
 ### Environment variables
@@ -164,7 +164,7 @@ docs/                   architecture, deployment, testing report
 
 ## Quality
 
-- **176 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
+- **180 tests** across scoring, comparison maths, request validation, the analyzer engine, evidence
   honesty, the live provider path, request-scoped keys, connection verification, error mapping,
   schemas, throttling, storage, settings, theme tokens and the demo improver.
 - **Theme contrast is tested, not eyeballed:** both palettes must clear WCAG AA (7:1 for body text,
