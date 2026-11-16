@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { WorkspaceHeader } from "@/components/layout/workspace-header";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
@@ -8,12 +9,15 @@ import { LabeledInput, Select } from "@/components/ui/field";
 import { LoadingLine, Notice } from "@/components/ui/notice";
 import { PromptEditor } from "@/components/ui/prompt-editor";
 import { useToast } from "@/components/ui/toast";
-import { categories, PROMPT_LIMITS, RUBRIC_VERSION } from "@/config/app";
+import { categories, PROMPT_LIMITS, RUBRIC_VERSION, getCategory } from "@/config/app";
 import { postJson, type ApiError } from "@/lib/api/client";
 import { analyzeRequestSchema, firstIssue } from "@/lib/validation/schemas";
 import { fingerprintPrompt } from "@/lib/scoring/calculate-score";
 import { EvaluationResults } from "@/components/analyzer/evaluation-results";
 import { ImprovementWorkflow } from "@/components/improvement/improvement-workflow";
+import { SavePromptDialog } from "@/components/history/session-detail";
+import { createSession, setVersionEvaluation } from "@/lib/storage/prompt-storage";
+import { deriveTitle } from "@/lib/utils";
 import { SAMPLE_PROMPTS } from "@/config/samples";
 import { usePendingPrompt } from "@/hooks/use-pending-prompt";
 import type { EvaluationSnapshot } from "@/types/evaluation";
@@ -31,8 +35,30 @@ export function AnalyzerView() {
   const [result, setResult] = useState<EvaluationSnapshot | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [fieldError, setFieldError] = useState<string | undefined>();
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savedSession, setSavedSession] = useState<{ sessionId: string; versionId: string } | null>(null);
+  const [handoffLinked, setHandoffLinked] = useState(false);
 
   const handoffVisible = Boolean(pending) && dismissedHandoff !== pending?.createdAt;
+
+  function handleSaveSession(sessionTitle: string) {
+    if (!result) return;
+    try {
+      const session = createSession({
+        title: sessionTitle,
+        category,
+        promptText: prompt,
+        source: "manual",
+        evaluation: result,
+      });
+      setSavedSession({ sessionId: session.id, versionId: session.currentVersionId });
+      setTitle(sessionTitle);
+      setSaveDialogOpen(false);
+      showToast("Prompt and evaluation saved to history.");
+    } catch (saveError) {
+      showToast(saveError instanceof Error ? saveError.message : "The prompt could not be saved.", "error");
+    }
+  }
 
   const stale = useMemo(() => {
     if (!result) return false;
@@ -68,6 +94,22 @@ export function AnalyzerView() {
 
     setResult(response.data);
     setPhase("ready");
+    setSavedSession(null);
+
+    // When the prompt came from a saved version, record this evaluation on that
+    // version instead of creating a duplicate session.
+    if (handoffLinked && pending?.sessionId && pending.versionId) {
+      try {
+        const updated = setVersionEvaluation(pending.sessionId, pending.versionId, response.data);
+        if (updated) {
+          setSavedSession({ sessionId: pending.sessionId, versionId: pending.versionId });
+          showToast("Evaluation recorded on the saved version in history.");
+        }
+      } catch {
+        showToast("The evaluation could not be linked to the saved version.", "error");
+      }
+    }
+
     showToast(
       response.data.source === "live"
         ? `Evaluation complete. Overall score ${response.data.overallScore}/100.`
@@ -112,7 +154,12 @@ export function AnalyzerView() {
                       setPhase("idle");
                       setFieldError(undefined);
                       setDismissedHandoff(pending.createdAt);
-                      showToast("Builder prompt loaded into the analyzer.");
+                      setHandoffLinked(Boolean(pending.sessionId && pending.versionId));
+                      showToast(
+                        pending.sessionId
+                          ? "Saved version loaded. The next evaluation is recorded on that version."
+                          : "Builder prompt loaded into the analyzer.",
+                      );
                     }}
                     className={buttonClass({ variant: "secondary", size: "sm" })}
                   >
@@ -122,6 +169,7 @@ export function AnalyzerView() {
               >
                 {pending.prompt.length.toLocaleString()} characters ready to evaluate. Loading replaces the current
                 input.
+                {pending.sessionId ? " This handoff is linked to a saved version." : ""}
               </Notice>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -262,12 +310,29 @@ export function AnalyzerView() {
                 onImprove={() =>
                   document.getElementById("improve-workflow")?.scrollIntoView({ behavior: "smooth", block: "start" })
                 }
+                actions={
+                  savedSession ? (
+                    <Link href="/history" className={buttonClass({ variant: "primary", size: "md" })}>
+                      Saved — open history
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSaveDialogOpen(true)}
+                      className={buttonClass({ variant: "primary", size: "md" })}
+                    >
+                      Save to history
+                    </button>
+                  )
+                }
               />
               <ImprovementWorkflow
                 originalPrompt={prompt}
                 originalSnapshot={result}
                 category={category}
                 title={title || undefined}
+                sessionId={savedSession?.sessionId}
+                versionLabel={result.source === "live" ? "Improved revision · live model" : "Improved revision · demo data"}
               />
             </div>
           ) : phase === "analyzing" ? (
@@ -277,6 +342,15 @@ export function AnalyzerView() {
           )}
         </section>
       </div>
+
+      <SavePromptDialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        defaultTitle={title || deriveTitle(prompt)}
+        category={getCategory(category).label}
+        versionCount={handoffLinked ? 2 : 1}
+        onSave={handleSaveSession}
+      />
     </div>
   );
 }

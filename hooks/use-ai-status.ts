@@ -11,25 +11,30 @@ export type AiStatus = {
 
 const FALLBACK: AiStatus = { mode: "demo", model: null, configured: false };
 
+// One shared request per page load, no matter how many badges are mounted.
+let statusPromise: Promise<AiStatus> | null = null;
+
+function loadStatus(): Promise<AiStatus> {
+  if (!statusPromise) {
+    statusPromise = getJson<AiStatus>("/api/ai/status").then((result) =>
+      result.ok ? result.data : FALLBACK,
+    );
+  }
+  return statusPromise;
+}
+
 export function useAiStatus() {
-  const [status, setStatus] = useState<AiStatus>(FALLBACK);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<AiStatus | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
     let active = true;
-
-    getJson<AiStatus>("/api/ai/status", controller.signal).then((result) => {
-      if (!active) return;
-      setStatus(result.ok ? result.data : FALLBACK);
-      setLoading(false);
+    loadStatus().then((next) => {
+      if (active) setStatus(next);
     });
-
     return () => {
       active = false;
-      controller.abort();
     };
   }, []);
 
-  return { status, loading };
+  return { status: status ?? FALLBACK, loading: status === null };
 }

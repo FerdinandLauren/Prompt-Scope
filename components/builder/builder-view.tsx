@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowUpRight,
   Check,
@@ -36,6 +37,9 @@ import {
 import { buildDraftPrompt } from "@/lib/prompt/draft";
 import { postJson, type ApiError } from "@/lib/api/client";
 import { savePendingPrompt } from "@/lib/storage/pending-prompt";
+import { createSession } from "@/lib/storage/prompt-storage";
+import { SavePromptDialog } from "@/components/history/session-detail";
+import { deriveTitle } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { firstIssue, promptConfigurationSchema } from "@/lib/validation/schemas";
 import type { GeneratedPrompt, PromptConfiguration, SliderKey } from "@/types/prompt";
@@ -63,6 +67,8 @@ export function BuilderView() {
   const [promptText, setPromptText] = useState("");
   const [title, setTitle] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const category = getCategory(configuration.category);
@@ -209,6 +215,25 @@ export function BuilderView() {
       createdAt: new Date().toISOString(),
     });
     router.push("/analyzer");
+  }
+
+  function handleSavePrompt(sessionTitle: string) {
+    try {
+      const session = createSession({
+        title: sessionTitle,
+        category: configuration.category,
+        promptText,
+        source: generated?.source === "draft" ? "manual" : "generated",
+        label: generated?.source === "draft" ? "Local draft" : generated?.source === "demo" ? "Demo data" : "Generated",
+        configuration,
+      });
+      setTitle(sessionTitle);
+      setSaveDialogOpen(false);
+      setSavedSessionId(session.id);
+      showToast("Prompt saved to history as version 1.");
+    } catch (saveError) {
+      showToast(saveError instanceof Error ? saveError.message : "The prompt could not be saved.", "error");
+    }
   }
 
   return (
@@ -670,10 +695,23 @@ export function BuilderView() {
                       <ScanSearch size={14} strokeWidth={1.8} aria-hidden="true" />
                       Analyze prompt
                     </button>
+                    {savedSessionId ? (
+                      <Link href="/history" className={buttonClass({ variant: "secondary", size: "md" })}>
+                        Saved — open history
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSaveDialogOpen(true)}
+                        className={buttonClass({ variant: "secondary", size: "md" })}
+                      >
+                        Save to history
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleGenerate}
-                      className={buttonClass({ variant: "secondary", size: "md" })}
+                      className={buttonClass({ variant: "ghost", size: "md" })}
                     >
                       Generate again
                     </button>
@@ -683,6 +721,7 @@ export function BuilderView() {
                         setGenerated(null);
                         setPromptText("");
                         setTitle("");
+                        setSavedSessionId(null);
                       }}
                       className={buttonClass({ variant: "ghost", size: "md" })}
                     >
@@ -728,6 +767,15 @@ export function BuilderView() {
           </div>
         </aside>
       </div>
+
+      <SavePromptDialog
+        open={saveDialogOpen}
+        onClose={() => setSaveDialogOpen(false)}
+        defaultTitle={title || generated?.title || deriveTitle(promptText)}
+        category={category.label}
+        versionCount={1}
+        onSave={handleSavePrompt}
+      />
     </div>
   );
 }

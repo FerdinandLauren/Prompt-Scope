@@ -2,12 +2,16 @@ import type { GeneratedPrompt, PromptConfiguration } from "@/types/prompt";
 
 const PENDING_KEY = "promptscope.pending.v1";
 
+export const PENDING_PROMPT_KEY = PENDING_KEY;
+
 export type PendingPrompt = {
   prompt: string;
   title: string;
   category: PromptConfiguration["category"];
   configuration?: PromptConfiguration;
   generated?: GeneratedPrompt;
+  sessionId?: string;
+  versionId?: string;
   createdAt: string;
 };
 
@@ -32,6 +36,8 @@ export function readPendingPrompt(): PendingPrompt | null {
       category: parsed.category === "visual_design" ? "visual_design" : "ui_ux",
       configuration: parsed.configuration,
       generated: parsed.generated,
+      sessionId: typeof parsed.sessionId === "string" ? parsed.sessionId : undefined,
+      versionId: typeof parsed.versionId === "string" ? parsed.versionId : undefined,
       createdAt: parsed.createdAt ?? new Date().toISOString(),
     };
   } catch {

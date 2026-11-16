@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { readPendingPrompt } from "@/lib/storage/pending-prompt";
+import { PENDING_PROMPT_KEY, readPendingPrompt } from "@/lib/storage/pending-prompt";
 
 const listeners = new Set<() => void>();
 
@@ -16,9 +16,21 @@ function subscribe(onChange: () => void) {
   };
 }
 
+let cachedRaw: string | null = null;
+let cachedValue: ReturnType<typeof readPendingPrompt> = null;
+
 function getSnapshot() {
-  const next = readPendingPrompt();
-  return next ?? null;
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(PENDING_PROMPT_KEY);
+  } catch {
+    return cachedValue;
+  }
+
+  if (raw === cachedRaw) return cachedValue;
+  cachedRaw = raw;
+  cachedValue = readPendingPrompt();
+  return cachedValue;
 }
 
 function getServerSnapshot() {
@@ -32,8 +44,4 @@ function getServerSnapshot() {
  */
 export function usePendingPrompt() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-}
-
-export function notifyPendingPromptChanged() {
-  for (const listener of listeners) listener();
 }

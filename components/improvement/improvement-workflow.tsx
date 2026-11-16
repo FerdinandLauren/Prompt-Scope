@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { evaluationDimensions, getScoreBand } from "@/config/evaluation-rubric";
 import { postJson, type ApiError } from "@/lib/api/client";
 import { saveComparison } from "@/lib/storage/comparison-storage";
+import { addVersion } from "@/lib/storage/prompt-storage";
 import { ScopeRadar } from "@/components/visualization/scope-radar";
 import { DeltaPill, signed } from "@/components/comparison/delta-pill";
 import { compareSnapshots } from "@/lib/scoring/compare-scores";
@@ -25,13 +26,15 @@ export function ImprovementWorkflow({
   originalSnapshot,
   category,
   title,
-  onImprovedPromptReady,
+  sessionId,
+  versionLabel = "Improved revision",
 }: {
   originalPrompt: string;
   originalSnapshot: EvaluationSnapshot;
   category: string;
   title?: string;
-  onImprovedPromptReady?: (prompt: string) => void;
+  sessionId?: string;
+  versionLabel?: string;
 }) {
   const { showToast } = useToast();
   const weakDimensions = originalSnapshot.dimensionDetails
@@ -81,7 +84,6 @@ export function ImprovementWorkflow({
 
     setImprovement(response.data);
     setImprovedPrompt(response.data.improvedPrompt);
-    onImprovedPromptReady?.(response.data.improvedPrompt);
     setStage("revised");
     showToast(
       response.data.source === "live"
@@ -243,7 +245,6 @@ export function ImprovementWorkflow({
                   value={improvedPrompt}
                   onChange={(value) => {
                     setImprovedPrompt(value);
-                    onImprovedPromptReady?.(value);
                     if (stage === "compared") setStage("revised");
                   }}
                   minHeight={220}
@@ -368,6 +369,34 @@ export function ImprovementWorkflow({
             improved={improvedSnapshot}
             onSave={handleSaveComparison}
             saved={Boolean(savedId)}
+            onSaveVersion={
+              sessionId
+                ? () => {
+                    try {
+                      addVersion({
+                        sessionId,
+                        promptText: improvedPrompt,
+                        source: "improved",
+                        label: versionLabel,
+                        evaluation: improvedSnapshot,
+                        comparison: {
+                          originalVersionId: "",
+                          improvedVersionId: "",
+                          original: originalSnapshot,
+                          improved: improvedSnapshot,
+                          improvement,
+                        },
+                      });
+                      showToast("Improved prompt saved as a new version in history.");
+                    } catch (versionError) {
+                      showToast(
+                        versionError instanceof Error ? versionError.message : "The version could not be saved.",
+                        "error",
+                      );
+                    }
+                  }
+                : undefined
+            }
           />
         </div>
       ) : null}
@@ -381,6 +410,7 @@ export function ComparisonPanel({
   improved,
   onSave,
   saved,
+  onSaveVersion,
   compact = false,
 }: {
   comparison: ScoreComparison;
@@ -388,6 +418,7 @@ export function ComparisonPanel({
   improved: EvaluationSnapshot;
   onSave?: () => void;
   saved?: boolean;
+  onSaveVersion?: () => void;
   compact?: boolean;
 }) {
   const overallTone = comparison.overallChange > 0 ? "positive" : comparison.overallChange < 0 ? "negative" : "flat";
@@ -533,18 +564,27 @@ export function ComparisonPanel({
         </div>
       </div>
 
-      {onSave ? (
+      {onSave || onSaveVersion ? (
         <div className="flex flex-wrap items-center gap-3 border-t border-line-soft pt-4">
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saved}
-            className={buttonClass({ variant: saved ? "secondary" : "primary", size: "md" })}
-          >
-            {saved ? "Saved to comparisons" : "Save comparison"}
-          </button>
+          {onSave ? (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saved}
+              className={buttonClass({ variant: saved ? "secondary" : "primary", size: "md" })}
+            >
+              {saved ? "Saved to comparisons" : "Save comparison"}
+            </button>
+          ) : null}
+          {onSaveVersion ? (
+            <button type="button" onClick={onSaveVersion} className={buttonClass({ variant: "secondary", size: "md" })}>
+              Save improved as new version
+            </button>
+          ) : null}
           <span className="text-[11px] text-ink-3">
-            Saved comparisons stay in this browser and appear on the Comparisons page.
+            {onSaveVersion
+              ? "The original version stays untouched; the revision is appended to the session."
+              : "Saved comparisons stay in this browser and appear on the Comparisons page."}
           </span>
         </div>
       ) : null}

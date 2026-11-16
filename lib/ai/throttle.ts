@@ -4,17 +4,28 @@ import { AiError } from "@/lib/ai/errors";
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
-const WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_WINDOW = 12;
 const MAX_KEYS = 5_000;
+
+function windowMs() {
+  const configured = Number(process.env.AI_RATE_LIMIT_WINDOW_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : 60_000;
+}
+
+function maxRequests() {
+  const configured = Number(process.env.AI_RATE_LIMIT_MAX);
+  return Number.isFinite(configured) && configured > 0 ? configured : 12;
+}
 
 /**
  * Small in-process sliding-window limiter. It protects a single server
  * instance from runaway retries; production deployments should also rely on
- * platform-level rate limiting.
+ * platform-level rate limiting. Both the window and the ceiling are
+ * configurable through the environment for local testing.
  */
 export function assertWithinRateLimit(identifier: string) {
   const now = Date.now();
+  const WINDOW_MS = windowMs();
+  const MAX_REQUESTS_PER_WINDOW = maxRequests();
 
   if (buckets.size > MAX_KEYS) {
     for (const [key, bucket] of buckets) {
